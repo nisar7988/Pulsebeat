@@ -2,8 +2,9 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import UIKit
+internal import Expo
 
-class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate {
+class SceneDelegate: ExpoReactNativeFactoryDelegate, UIWindowSceneDelegate {
   var window: UIWindow?
   var reactNativeFactory: RCTReactNativeFactory?
 
@@ -17,7 +18,7 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
     }
 
     dependencyProvider = RCTAppDependencyProvider()
-    reactNativeFactory = RCTReactNativeFactory(delegate: self)
+    reactNativeFactory = ExpoReactNativeFactory(delegate: self)
     window = UIWindow(windowScene: windowScene)
     
     #if DEBUG
@@ -34,8 +35,6 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
       in: window,
       connectionOptions: connectionOptions
     )
-
-   
   }
 
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {

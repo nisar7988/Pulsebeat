@@ -1,0 +1,8 @@
+export { default as PlayerHeader } from './PlayerHeader';
+export type { PlayerHeaderProps } from './PlayerHeader';
+
+export { default as SongInfo } from './SongInfo';
+export type { SongInfoProps } from './SongInfo';
+
+export { default as PlayerControls } from './PlayerControls';
+export type { PlayerControlsProps } from './PlayerControls';
