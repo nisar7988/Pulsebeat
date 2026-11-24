@@ -5,7 +5,7 @@ import { theme } from '../../theme';
 
 export default function GradientBackground({ children }: PropsWithChildren) {
   return (
-    <View className="flex-1 bg-background">
+    <View style={{ flex: 1, backgroundColor: theme.colors.background.DEFAULT }}>
       <LinearGradient
         pointerEvents="none"
         colors={theme.gradients.app}

@@ -52,3 +52,68 @@ if (fs.existsSync(targetFile)) {
     console.log('[patch-expo] Patched JavaScriptObject.swift for Swift 6.2 concurrency');
   }
 }
+
+// Fix react-native-css-interop crash when stringifying React Navigation context getters
+const cssInteropFile = path.join(
+  __dirname,
+  '../node_modules/react-native-css-interop/dist/runtime/native/render-component.js'
+);
+
+if (fs.existsSync(cssInteropFile)) {
+  let cssContent = fs.readFileSync(cssInteropFile, 'utf8');
+  const oldStringify = `function stringify(object) {
+    const seen = new WeakSet();
+    return JSON.stringify(object, function replace(_, value) {
+        if (!(value !== null && typeof value === "object")) {
+            return value;
+        }
+        if (seen.has(value)) {
+            return "[Circular]";
+        }
+        seen.add(value);
+        const newValue = Array.isArray(value) ? [] : {};
+        for (const entry of Object.entries(value)) {
+            newValue[entry[0]] = replace(entry[0], entry[1]);
+        }
+        seen.delete(value);
+        return newValue;
+    }, 2);
+}`;
+
+  const safeStringify = `function stringify(object) {
+    const seen = new WeakSet();
+    try {
+        return JSON.stringify(object, function replace(_, value) {
+            if (!(value !== null && typeof value === "object")) {
+                return value;
+            }
+            if (seen.has(value)) {
+                return "[Circular]";
+            }
+            seen.add(value);
+            const newValue = Array.isArray(value) ? [] : {};
+            try {
+                for (const entry of Object.entries(value)) {
+                    try {
+                        newValue[entry[0]] = replace(entry[0], entry[1]);
+                    } catch {
+                        newValue[entry[0]] = "[Unserializable]";
+                    }
+                }
+            } catch {
+                return "[Unserializable]";
+            }
+            seen.delete(value);
+            return newValue;
+        }, 2);
+    } catch {
+        return "[Unserializable]";
+    }
+}`;
+
+  if (cssContent.includes(oldStringify)) {
+    cssContent = cssContent.replace(oldStringify, safeStringify);
+    fs.writeFileSync(cssInteropFile, cssContent, 'utf8');
+    console.log('[patch-expo] Patched react-native-css-interop stringify for safe context inspection');
+  }
+}

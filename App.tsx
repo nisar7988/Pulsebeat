@@ -20,12 +20,12 @@ function App() {
 
   return (
     <SafeAreaProvider>
-      <GradientBackground>
-        <NavigationContainer theme={navigationTheme}>
-          <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <NavigationContainer theme={navigationTheme}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <GradientBackground>
           <RootNavigator />
-        </NavigationContainer>
-      </GradientBackground>
+        </GradientBackground>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }
