@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import {
   getSongsByLanguage,
@@ -20,7 +21,8 @@ import {
   ApiArtist,
 } from '../../service/music';
 import { Song } from '../../types/song';
-import { useUserStore } from '../../store';
+import { useUserStore, useCurrentSongStore } from '../../store';
+import { playSong } from '../../service/player';
 import {
   HomeHeader,
   SectionHeader,
@@ -30,13 +32,14 @@ import {
   GlassMiniPlayer,
 } from './components';
 import { theme } from '../../theme';
-import { AppTabParamList } from '../../navigation/types';
+import { AppTabParamList, RootStackParamList } from '../../navigation/types';
 
 export default function HomeScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
 
   // User preferences from Zustand store
   const { selectedLanguages, selectedGenres, selectedArtists } = useUserStore();
+  const currentSong = useCurrentSongStore((state) => state.currentSong);
 
   const userLanguages = useMemo(
     () => (selectedLanguages.length > 0 ? selectedLanguages : ['english', 'hindi']),
@@ -60,6 +63,23 @@ export default function HomeScreen() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Unified method to play a song and navigate to Player screen
+   const handlePlaySong = (song: Song) => {
+    // 1. Immediately navigate to Player screen
+    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+    if (parent) {
+      parent.navigate('Player', { song });
+    } else {
+      (navigation as any).navigate('Player', { song });
+    }
+
+    // 2. Play song asynchronously without blocking UI transition
+    useCurrentSongStore.getState().setCurrentSong(song);
+    playSong(song).catch((e) => {
+      console.log('Error playing song:', e);
+    });
+  };
 
   // Load artists details/avatars
   useEffect(() => {
@@ -198,7 +218,11 @@ export default function HomeScreen() {
                   contentContainerClassName="px-5 py-2"
                 >
                   {artistSongs.map((song) => (
-                    <HorizontalSongCard key={song.id} song={song} />
+                    <HorizontalSongCard
+                      key={song.id}
+                      song={song}
+                      onPlay={handlePlaySong}
+                    />
                   ))}
                 </ScrollView>
               </View>
@@ -255,7 +279,11 @@ export default function HomeScreen() {
                 contentContainerClassName="px-5 py-2 mt-1"
               >
                 {genreSongs.map((song) => (
-                  <HorizontalSongCard key={song.id} song={song} />
+                  <HorizontalSongCard
+                    key={song.id}
+                    song={song}
+                    onPlay={handlePlaySong}
+                  />
                 ))}
               </ScrollView>
             </View>
@@ -269,7 +297,11 @@ export default function HomeScreen() {
               />
               <View className="pt-1">
                 {trendingSongs.map((song) => (
-                  <SongCard key={song.id} song={song} />
+                  <SongCard
+                    key={song.id}
+                    song={song}
+                    onPlay={handlePlaySong}
+                  />
                 ))}
               </View>
             </View>
@@ -278,7 +310,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* Floating Glass Mini Player */}
-      <GlassMiniPlayer fallbackSong={trendingSongs[0] || genreSongs[0]} />
+      <GlassMiniPlayer fallbackSong={currentSong || trendingSongs[0] || genreSongs[0]} />
     </SafeAreaView>
   );
 }

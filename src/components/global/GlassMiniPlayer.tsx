@@ -23,9 +23,12 @@ import {
   resumeSong,
   playSong,
   skipToNextSong,
+  getSongArtistName,
+  getSongArtwork,
 } from '../../service/player';
 import { RootStackParamList } from '../../navigation/types';
 import { theme } from '../../theme';
+import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 
 export interface GlassMiniPlayerProps {
   fallbackSong?: Song;
@@ -39,23 +42,22 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
   const activeTrack = useActiveTrack();
   const { playing } = useIsPlaying();
   const { position, duration } = useProgress(250);
+  const currentSong = useCurrentSongStore((state) => state.currentSong);
+
+  const activeOrFallbackSong = currentSong || fallbackSong;
 
   // If no track is playing and no fallback song is available, don't render
-  if (!activeTrack && !fallbackSong) {
+  if (!activeTrack && !activeOrFallbackSong) {
     return null;
   }
 
-  const title = activeTrack?.title || fallbackSong?.name || 'Nothing Playing';
+  const title = activeTrack?.title || activeOrFallbackSong?.name || 'Nothing Playing';
   const artist =
     activeTrack?.artist ||
-    fallbackSong?.artists?.primary?.[0]?.name ||
-    fallbackSong?.artists?.all?.[0]?.name ||
-    'PulseBeat';
+    getSongArtistName(activeOrFallbackSong);
   const artwork =
     (activeTrack?.artwork as string) ||
-    fallbackSong?.image?.[1]?.url ||
-    fallbackSong?.image?.[0]?.url ||
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300';
+    getSongArtwork(activeOrFallbackSong);
 
   const progressRatio =
     duration > 0 ? Math.min(Math.max(position / duration, 0), 1) : 0;
@@ -66,8 +68,9 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
       if (playing) {
         await pauseSong();
       } else {
-        if (!activeTrack && fallbackSong) {
-          await playSong(fallbackSong);
+        if (!activeTrack && activeOrFallbackSong) {
+          useCurrentSongStore.getState().setCurrentSong(activeOrFallbackSong);
+          await playSong(activeOrFallbackSong);
         } else {
           await resumeSong();
         }
@@ -114,7 +117,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
           url: '',
           year: '',
         }
-      : fallbackSong;
+      : activeOrFallbackSong;
 
     if (songToPlay) {
       const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();

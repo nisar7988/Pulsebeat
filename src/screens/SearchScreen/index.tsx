@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Keyboard,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,7 +17,6 @@ import { BlurView } from '@react-native-community/blur';
 import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useActiveTrack, useIsPlaying } from 'react-native-track-player';
 
 import { theme } from '../../theme';
 import { Song } from '../../types/song';
@@ -26,6 +25,7 @@ import { playSong } from '../../service/player';
 import { useUserStore } from '../../store';
 import { RootStackParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
+import { SongCard } from '../HomeScreen/components';
 
 const MOODS = [
   'All',
@@ -63,50 +63,28 @@ const GlassCard: React.FC<GlassCardProps> = ({
   tintColor = theme.colors.glass.tint,
 }) => (
   <View className={`overflow-hidden border border-glass-border ${className}`}>
-    <BlurView
-      style={StyleSheet.absoluteFill}
-      blurType="light"
-      blurAmount={22}
-      overlayColor="transparent"
-      reducedTransparencyFallbackColor={theme.colors.glass.fallbackSearch}
-    />
+    {Platform.OS === 'ios' && (
+      <BlurView
+        style={StyleSheet.absoluteFill}
+        blurType="light"
+        blurAmount={22}
+        overlayColor="transparent"
+        reducedTransparencyFallbackColor={theme.colors.glass.fallbackSearch}
+      />
+    )}
     <View className="absolute inset-0" style={{ backgroundColor: tintColor }} />
     {children}
   </View>
 );
 
-const formatDuration = (seconds?: number | string): string => {
-  if (!seconds) return '';
-  const sec = typeof seconds === 'string' ? parseInt(seconds, 10) : seconds;
-  if (isNaN(sec) || sec <= 0) return '';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-};
 
-const getArtistName = (song: Song): string => {
-  const primary = song.artists?.primary?.map((a) => a.name).join(', ');
-  if (primary) return primary;
-  const all = song.artists?.all?.map((a) => a.name).join(', ');
-  if (all) return all;
-  return 'Unknown Artist';
-};
 
-const getSongImage = (song: Song): string => {
-  return (
-    song.image?.[2]?.url ||
-    song.image?.[1]?.url ||
-    song.image?.[0]?.url ||
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300'
-  );
-};
+
 
 const SearchScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { selectedLanguages, selectedArtists } = useUserStore();
 
-  const activeTrack = useActiveTrack();
-  const { playing } = useIsPlaying();
 
   // Search State
   const [query, setQuery] = useState('');
@@ -492,89 +470,9 @@ const SearchScreen = () => {
               </View>
             </>
           }
-          renderItem={({ item }) => {
-            const isCurrentSong = activeTrack?.id === item.id;
-            const imageUrl = getSongImage(item);
-            const artistName = getArtistName(item);
-            const formattedDuration = formatDuration(item.duration);
-
-            return (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => handlePlaySong(item)}
-              >
-                <GlassCard
-                  className={`mb-3 flex-row items-center gap-3.5 rounded-2xl p-3 ${
-                    isCurrentSong ? 'border-accent' : 'border-glass-border'
-                  }`}
-                  tintColor={
-                    isCurrentSong
-                      ? theme.colors.glass.tintActive
-                      : theme.colors.glass.tint
-                  }
-                >
-                  {/* Artwork Image with Active Playing Overlay */}
-                  <View className="relative h-[52px] w-[52px] overflow-hidden rounded-xl bg-glass-tint">
-                    <Image
-                      source={{ uri: imageUrl }}
-                      className="h-full w-full"
-                      resizeMode="cover"
-                    />
-                    {isCurrentSong && playing && (
-                      <View className="absolute inset-0 items-center justify-center bg-black/40">
-                        <Feather
-                          name="volume-2"
-                          size={20}
-                          color={theme.colors.accent.DEFAULT}
-                        />
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Song Title & Artist */}
-                  <View className="flex-1 justify-center">
-                    <Text
-                      className={`text-base font-semibold ${
-                        isCurrentSong ? 'text-accent' : 'text-text'
-                      }`}
-                      numberOfLines={1}
-                    >
-                      {item.name}
-                    </Text>
-                    <Text
-                      className="mt-0.5 text-xs text-text-muted"
-                      numberOfLines={1}
-                    >
-                      {artistName}
-                    </Text>
-                  </View>
-
-                  {/* Duration */}
-                  {formattedDuration ? (
-                    <Text className="mr-1 text-xs text-text-subtle">
-                      {formattedDuration}
-                    </Text>
-                  ) : null}
-
-                  {/* Play / Pause / Equalizer Button */}
-                  <View
-                    className={`h-9 w-9 items-center justify-center rounded-full ${
-                      isCurrentSong
-                        ? 'bg-accent shadow-sm shadow-accent/50'
-                        : 'bg-glass-tint'
-                    }`}
-                  >
-                    <Feather
-                      name={isCurrentSong && playing ? 'pause' : 'play'}
-                      size={16}
-                      color={isCurrentSong ? theme.colors.text.dark : theme.colors.accent.DEFAULT}
-                      className={isCurrentSong && playing ? '' : 'ml-0.5'}
-                    />
-                  </View>
-                </GlassCard>
-              </TouchableOpacity>
-            );
-          }}
+          renderItem={({ item }) => (
+            <SongCard song={item} onPlay={handlePlaySong} />
+          )}
           ListEmptyComponent={
             isSearching ? (
               <GlassCard className="items-center justify-center gap-3 rounded-3xl py-12">

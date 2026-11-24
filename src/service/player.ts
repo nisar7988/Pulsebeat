@@ -1,5 +1,6 @@
-import TrackPlayer, { Capability } from 'react-native-track-player';
-import type { Song } from '../types/song';
+import TrackPlayer, { Capability, State } from 'react-native-track-player';
+import { Song } from '../types/song';
+import { useCurrentSongStore } from '../store/useCurrentSongStore';
 
 let isPlayerInitialized = false;
 let isInitializing = false;
@@ -36,31 +37,85 @@ export const initializePlayer = async () => {
   }
 };
 
-export const playSong = async (song: Song) => {
+export const getSongArtistName = (song?: Song | null): string => {
+  if (!song) return 'Unknown Artist';
+  const primary = song.artists?.primary?.map((a) => a.name).join(', ');
+  if (primary) return primary;
+  const all = song.artists?.all?.map((a) => a.name).join(', ');
+  if (all) return all;
+  return 'Unknown Artist';
+};
+
+export const getSongArtwork = (song?: Song | null): string => {
+  if (!song) {
+    return 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300';
+  }
+  return (
+    song.image?.[2]?.url ||
+    song.image?.[1]?.url ||
+    song.image?.[0]?.url ||
+    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300'
+  );
+};
+
+export const playSong = async (song?: Song) => {
   try {
+    if (song) {
+      useCurrentSongStore.getState().setCurrentSong(song);
+    }
+    const currentSong = song || useCurrentSongStore.getState().currentSong;
+    if (!currentSong) return;
     await initializePlayer();
 
-    const primaryArtists = song.artists?.primary?.map(artist => artist.name).join(', ');
-    const allArtists = song.artists?.all?.map(artist => artist.name).join(', ');
-    const artistName = primaryArtists || allArtists || 'Unknown Artist';
+    // If the selected song is already the active track in TrackPlayer, resume playback if paused
+    const activeTrack = await TrackPlayer.getActiveTrack();
+    if (activeTrack?.id === currentSong.id) {
+      const playbackState = await TrackPlayer.getPlaybackState();
+      if (playbackState.state !== State.Playing) {
+        await TrackPlayer.play();
+      }
+      return;
+    }
 
-    const downloadUrls = song.downloadUrl || [];
-    const audioUrl = downloadUrls[downloadUrls.length - 1]?.url || downloadUrls[0]?.url;
+    const artistName = getSongArtistName(currentSong);
+    const downloadUrls = currentSong.downloadUrl || [];
+    let audioUrl = downloadUrls[downloadUrls.length - 1]?.url || downloadUrls[0]?.url;
 
-    const artwork = song.image?.[2]?.url || song.image?.[1]?.url || song.image?.[0]?.url;
+    // Fallback: fetch song details if downloadUrl is missing or empty
+    if (!audioUrl && currentSong.id) {
+      try {
+        const res = await fetch(
+          `https://saavn.bycomsolutions.com/api/songs/${encodeURIComponent(currentSong.id)}`,
+        );
+        const data = await res.json();
+        const songDetail = data?.data?.[0];
+        if (songDetail?.downloadUrl?.length) {
+          const detailUrls = songDetail.downloadUrl;
+          audioUrl = detailUrls[detailUrls.length - 1]?.url || detailUrls[0]?.url;
+        }
+      } catch (err) {
+        console.log('Error fetching audioUrl fallback:', err);
+      }
+    }
+
+    const artwork = getSongArtwork(currentSong);
 
     if (audioUrl) {
       await TrackPlayer.reset();
 
       await TrackPlayer.add({
-        id: song.id,
+        id: currentSong.id,
         url: audioUrl,
-        title: song.name,
+        title: currentSong.name,
         artist: artistName,
         artwork: artwork,
       });
 
       await TrackPlayer.play();
+    } else {
+      // Stop previous track so it does not keep playing in the background
+      await TrackPlayer.stop();
+      console.log('No playable audio URL found for song:', currentSong.id);
     }
   } catch (err) {
     console.log('Error in playSong:', err);

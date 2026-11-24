@@ -1,99 +1,60 @@
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Song } from '../../../types/song';
-import { playSong } from '../../../service/player';
-import PlayCircleIcon from '../../../components/ui/PlayButton';
-import { RootStackParamList } from '../../../navigation/types';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
+import Feather from 'react-native-vector-icons/Feather';
 import { theme } from '../../../theme';
+import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
 
-export interface SongCardProps {
-  song: Song;
-  onPlay?: (song: Song) => void;
-}
+export type HorizontalSongCardProps = BaseSongCardProps;
 
-export default function SongCard({ song, onPlay }: SongCardProps) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
-  const imageUrl = song.image?.[1]?.url || song.image?.[0]?.url;
-  const primaryArtist = song.artists?.primary?.[0];
-  const artistName =
-    primaryArtist?.name ||
-    song.artists?.all?.[0]?.name ||
-    'Unknown Artist';
-
-  const handlePlay = () => {
-    // 1. Immediately navigate to Player screen
-    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
-    if (parent) {
-      parent.navigate('Player', { song });
-    } else {
-      (navigation as any).navigate('Player', { song });
-    }
-
-    // 2. Play song asynchronously without blocking UI transition
-    if (onPlay) {
-      onPlay(song);
-    } else {
-      playSong(song).catch((error) => {
-        console.log('Error playing song:', error);
-      });
-    }
-  };
-
+export const SongCard: React.FC<HorizontalSongCardProps> = ({
+  song,
+  onPlay,
+}) => {
+  const { isCurrentSong, isPlayingCurrent, imageUrl, artistName, handlePlay } =
+    useSongCard({ song, onPlay });
+const songName = song.name.length>10 ? song.name.slice(0,15) + "..." : song.name
   return (
-    <View className="mx-4 my-2 overflow-hidden rounded-2xl border border-glass-border">
-      {/* Glass blur background */}
-      <BlurView
-        style={StyleSheet.absoluteFill}
-        blurType="light"
-        blurAmount={25}
-        overlayColor="transparent"
-        reducedTransparencyFallbackColor={theme.colors.glass.fallback}
-      />
-      {/* Glass tint overlay */}
-      <View className="absolute inset-0 bg-glass-tint" />
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={handlePlay}
+      className='my-2 mx-4'
+    >
+      <View
+        className={` w-full h-16 rounded-2xl overflow-hidden flex-row relative border bg-glass-tint items-center ${
+          isCurrentSong ? 'border-accent' : 'border-glass-border'
+        }`}
+      >
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} className="w-[44] h-[44] mx-2 rounded-full" resizeMode="cover" />
+        ) : null}
 
-      {/* Card Content */}
-      <View className="flex-row items-center justify-between p-3.5">
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handlePlay}
-          className="mr-2 flex-1 flex-row items-center gap-3"
-        >
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              className="h-[50px] w-[50px] rounded-xl"
-            />
-          ) : null}
-
-          <View className="flex-1 justify-center">
+        <View className='flex-col'>
             <Text
-              className="text-base font-semibold text-text"
-              numberOfLines={1}
-            >
-              {song.name}
-            </Text>
-            <Text
-              className="mt-0.5 text-xs text-text-muted"
-              numberOfLines={1}
-            >
-              {artistName}
-            </Text>
-          </View>
-        </TouchableOpacity>
+        className={`text-md font-bold mt-2 ${
+          isCurrentSong ? 'text-accent' : 'text-white'
+        }`}
+        numberOfLines={1}
+      >
+        {songName}
+      </Text>
+      <Text className="text-xs text-white/60 mt-0.5" numberOfLines={1}>
+        {artistName}
+      </Text>
+        </View>
 
-        <TouchableOpacity
-          onPress={handlePlay}
-          activeOpacity={0.7}
-          className="items-center justify-center p-1"
-        >
-          <PlayCircleIcon color={theme.colors.accent.DEFAULT} size={32} />
-        </TouchableOpacity>
+        <View className="absolute flex-row bottom-2 right-2 h-12 w-12 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50">
+          <Feather
+            name={isPlayingCurrent ? 'pause' : 'play'}
+            size={24}
+            color={theme.colors.text.dark}
+            className={isPlayingCurrent ? '' : 'ml-0.5'}
+          />
+        </View>
       </View>
-    </View>
+
+   
+    </TouchableOpacity>
   );
-}
+};
+
+export default SongCard;

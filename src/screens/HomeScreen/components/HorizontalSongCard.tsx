@@ -1,55 +1,17 @@
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Feather from 'react-native-vector-icons/Feather';
-import { Song } from '../../../types/song';
-import { playSong } from '../../../service/player';
-import { RootStackParamList } from '../../../navigation/types';
-
 import { theme } from '../../../theme';
+import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
 
-export interface HorizontalSongCardProps {
-  song: Song;
-  onPlay?: (song: Song) => void;
-}
+export type HorizontalSongCardProps = BaseSongCardProps;
 
 export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = ({
   song,
   onPlay,
 }) => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
-  const imageUrl =
-    song.image?.[2]?.url ||
-    song.image?.[1]?.url ||
-    song.image?.[0]?.url ||
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300';
-
-  const primaryArtist = song.artists?.primary?.[0];
-  const artistName =
-    primaryArtist?.name ||
-    song.artists?.all?.[0]?.name ||
-    'Unknown Artist';
-
-  const handlePlay = () => {
-    // 1. Immediately navigate to Player screen
-    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
-    if (parent) {
-      parent.navigate('Player', { song });
-    } else {
-      (navigation as any).navigate('Player', { song });
-    }
-
-    // 2. Play song asynchronously without blocking UI transition
-    if (onPlay) {
-      onPlay(song);
-    } else {
-      playSong(song).catch((e) => {
-        console.log('Play error:', e);
-      });
-    }
-  };
+  const { isCurrentSong, isPlayingCurrent, imageUrl, artistName, handlePlay } =
+    useSongCard({ song, onPlay });
 
   return (
     <TouchableOpacity
@@ -57,13 +19,37 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = ({
       onPress={handlePlay}
       className="w-36 mr-3.5"
     >
-      <View className="w-36 h-36 rounded-2xl overflow-hidden relative border border-glass-border bg-glass-tint">
-        <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
+      <View
+        className={`w-36 h-36 rounded-2xl overflow-hidden relative border bg-glass-tint ${
+          isCurrentSong ? 'border-accent' : 'border-glass-border'
+        }`}
+      >
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
+        ) : null}
+
+        {isPlayingCurrent && (
+          <View className="absolute inset-0 items-center justify-center bg-black/40">
+            <Feather name="volume-2" size={24} color={theme.colors.accent.DEFAULT} />
+          </View>
+        )}
+
         <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50">
-          <Feather name="play" size={14} color={theme.colors.text.dark} className="ml-0.5" />
+          <Feather
+            name={isPlayingCurrent ? 'pause' : 'play'}
+            size={14}
+            color={theme.colors.text.dark}
+            className={isPlayingCurrent ? '' : 'ml-0.5'}
+          />
         </View>
       </View>
-      <Text className="text-sm font-bold text-white mt-2" numberOfLines={1}>
+
+      <Text
+        className={`text-sm font-bold mt-2 ${
+          isCurrentSong ? 'text-accent' : 'text-white'
+        }`}
+        numberOfLines={1}
+      >
         {song.name}
       </Text>
       <Text className="text-xs text-white/60 mt-0.5" numberOfLines={1}>

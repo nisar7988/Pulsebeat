@@ -9,18 +9,22 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useProgress, useActiveTrack } from 'react-native-track-player';
+import { useProgress, useActiveTrack, useIsPlaying } from 'react-native-track-player';
 import type { RootStackParamList } from '../../navigation/types';
 import {
   pauseSong,
   resumeSong,
+  playSong,
   skipToNextSong,
   skipToPreviousSong,
   seekTo,
+  getSongArtistName,
+  getSongArtwork,
 } from '../../service/player';
 import ProgressBar from '../../components/ui/ProgressBar';
 import { PlayerHeader, SongInfo, PlayerControls } from './components';
 import { useSongTheme } from '../../hooks/useSongTheme';
+import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 
 const { width: W } = Dimensions.get('window');
 const PANEL_H = 340;
@@ -30,11 +34,30 @@ const NowPlayingScreen = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'Player'>>();
   const song = route.params?.song;
   const activeTrack = useActiveTrack();
+  const { playing } = useIsPlaying();
+  const currentSong = useCurrentSongStore((state) => state.currentSong);
+  const activeSong = song || currentSong;
 
   const [isPlaying, setIsPlaying] = useState(true);
   const [liked, setLiked] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
+
+  // Sync isPlaying state with TrackPlayer
+  useEffect(() => {
+    if (typeof playing === 'boolean') {
+      setIsPlaying(playing);
+    }
+  }, [playing]);
+
+  // Ensure activeSong plays if TrackPlayer is not already playing this song
+  useEffect(() => {
+    if (activeSong && activeTrack?.id !== activeSong.id) {
+      playSong(activeSong).catch((err: any) =>
+        console.log('PlayerScreen playSong error:', err),
+      );
+    }
+  }, [activeSong, activeTrack?.id]);
 
   // Real progress from TrackPlayer with smooth simulated fallback & scrub support
   const { position, duration } = useProgress(250);
@@ -70,17 +93,12 @@ const NowPlayingScreen = () => {
     setSeekProgress(ratio);
   };
 
-  const title = activeTrack?.title || song?.name || 'Midnight Dreams';
+  // Prioritize activeSong so UI immediately updates to clicked song without waiting for TrackPlayer native bridge
+  const title = activeSong?.name || activeTrack?.title || 'Midnight Dreams';
   const artist =
-    activeTrack?.artist ||
-    song?.artists?.primary?.[0]?.name ||
-    song?.artists?.all?.[0]?.name ||
-    'Luna Waves';
+    (activeSong ? getSongArtistName(activeSong) : activeTrack?.artist) || 'Luna Waves';
   const artwork =
-    (activeTrack?.artwork as string) ||
-    song?.image?.[2]?.url ||
-    song?.image?.[1]?.url ||
-    song?.image?.[0]?.url ||
+    (activeSong ? getSongArtwork(activeSong) : (activeTrack?.artwork as string)) ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=900';
 
   const songTheme = useSongTheme(artwork);
