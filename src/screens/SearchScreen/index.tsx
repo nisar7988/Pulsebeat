@@ -234,16 +234,27 @@ const SearchScreen = () => {
     setActiveMood('All');
   };
 
-  const handlePlaySong = async (song: Song) => {
+  const handlePlaySong = (song: Song) => {
     try {
       if (query.trim()) {
         addRecent(query.trim());
       }
-      await playSong(song);
     } catch (e) {
-      console.log('Error playing song:', e);
+      console.log('Error adding recent search:', e);
     }
-    navigation.navigate('Player', { song });
+
+    // Navigate to Player immediately so screen transitions with 0 latency
+    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+    if (parent) {
+      parent.navigate('Player', { song });
+    } else {
+      (navigation as any).navigate('Player', { song });
+    }
+
+    // Start background playback asynchronously without blocking the UI
+    playSong(song).catch((e) => {
+      console.log('Error playing song:', e);
+    });
   };
 
   const displayList = useMemo(() => {

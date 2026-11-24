@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './src/components/global/GradientBackground';
 import RootNavigator from './src/navigation';
 import { theme } from './src/theme';
+import { initializePlayer } from './src/service/player';
 import './global.css';
 
 const navigationTheme = {
@@ -17,6 +18,10 @@ const navigationTheme = {
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+
+  React.useEffect(() => {
+    initializePlayer().catch((e) => console.log('Init player error:', e));
+  }, []);
 
   return (
     <SafeAreaProvider>

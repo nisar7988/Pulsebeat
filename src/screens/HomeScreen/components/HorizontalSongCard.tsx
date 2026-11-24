@@ -32,17 +32,23 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = ({
     song.artists?.all?.[0]?.name ||
     'Unknown Artist';
 
-  const handlePlay = async () => {
-    try {
-      if (onPlay) {
-        onPlay(song);
-      } else {
-        await playSong(song);
-      }
-    } catch (e) {
-      console.log('Play error:', e);
+  const handlePlay = () => {
+    // 1. Immediately navigate to Player screen
+    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+    if (parent) {
+      parent.navigate('Player', { song });
+    } else {
+      (navigation as any).navigate('Player', { song });
     }
-    navigation.navigate('Player', { song });
+
+    // 2. Play song asynchronously without blocking UI transition
+    if (onPlay) {
+      onPlay(song);
+    } else {
+      playSong(song).catch((e) => {
+        console.log('Play error:', e);
+      });
+    }
   };
 
   return (

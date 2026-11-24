@@ -86,9 +86,8 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
   };
 
   const handleOpenFullPlayer = () => {
-    if (activeTrack) {
-      navigation.navigate('Player', {
-        song: {
+    const songToPlay: Song | undefined = activeTrack
+      ? {
           id: activeTrack.id || '',
           name: activeTrack.title || '',
           artists: {
@@ -114,10 +113,16 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
           type: 'song',
           url: '',
           year: '',
-        },
-      });
-    } else if (fallbackSong) {
-      navigation.navigate('Player', { song: fallbackSong });
+        }
+      : fallbackSong;
+
+    if (songToPlay) {
+      const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+      if (parent) {
+        parent.navigate('Player', { song: songToPlay });
+      } else {
+        (navigation as any).navigate('Player', { song: songToPlay });
+      }
     }
   };
 
