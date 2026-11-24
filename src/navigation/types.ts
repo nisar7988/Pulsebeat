@@ -4,6 +4,7 @@ import type { Song } from '../types/song';
 export type AppTabParamList = {
   Home: undefined;
   Search: undefined;
+  Library: undefined;
   Profile: undefined;
 };
 

@@ -7,8 +7,9 @@ import { theme } from '../../theme';
 
 const ICONS: Record<string, string> = {
   Home: 'home',
-  Profile: 'user',
   Search: 'search',
+  Library: 'music',
+  Profile: 'user',
 };
 
 const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {

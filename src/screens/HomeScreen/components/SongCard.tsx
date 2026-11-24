@@ -4,9 +4,9 @@ import Feather from 'react-native-vector-icons/Feather';
 import { theme } from '../../../theme';
 import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
 
-export type HorizontalSongCardProps = BaseSongCardProps;
+export type SongCardProps = BaseSongCardProps;
 
-export const SongCard: React.FC<HorizontalSongCardProps> = ({
+export const SongCard: React.FC<SongCardProps> = ({
   song,
   onPlay,
 }) => {

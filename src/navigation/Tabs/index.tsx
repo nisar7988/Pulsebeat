@@ -1,9 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../../screens/HomeScreen';
+import SearchScreen from '../../screens/SearchScreen';
+import LibraryScreen from '../../screens/LibraryScreen';
 import ProfileScreen from '../../screens/ProfileScreen';
 import GlassTabBar from '../../components/global/GlassTabBar';
-import SearchScreen from '../../screens/SearchScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,6 +17,7 @@ const AppTabs = () => (
   >
     <Tab.Screen name="Home" component={HomeScreen} />
     <Tab.Screen name="Search" component={SearchScreen} />
+    <Tab.Screen name="Library" component={LibraryScreen} />
     <Tab.Screen name="Profile" component={ProfileScreen} />
   </Tab.Navigator>
 );
