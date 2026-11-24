@@ -1,11 +1,8 @@
 import React from 'react';
-import { View, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Path } from 'react-native-svg';
 import Feather from 'react-native-vector-icons/Feather';
-
-const { width: W } = Dimensions.get('window');
-const PANEL_H = 340;
+import { theme } from '../../../theme';
 
 export interface PlayerControlsProps {
   isPlaying: boolean;
@@ -32,11 +29,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
   liked = false,
   isShuffle = false,
   isRepeat = false,
-  accentColor = '#ff6aa9',
-  orbGradient = ['rgba(255,80,220,0.75)', 'rgba(110,60,255,0.75)'],
-  glowColor = '#ff66ff',
-  fanColor = 'rgba(20,10,90,0.28)',
-  ringColor = 'rgba(25,10,80,0.45)',
+  accentColor = theme.colors.accent.DEFAULT,
+  orbGradient = [...theme.gradients.orb],
+  glowColor = theme.colors.accent.glow,
+  fanColor: _fanColor = theme.colors.playerUi.fan,
+  ringColor = theme.colors.playerUi.ring,
   onTogglePlayback,
   onPrevious,
   onNext,
@@ -46,86 +43,106 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
 }) => {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* Darker fan shape from heart down to the orb */}
-      <Svg width={W} height={PANEL_H} style={StyleSheet.absoluteFill}>
-       
-      </Svg>
-
       {/* Heart button */}
       <TouchableOpacity
-        style={styles.heartButton}
+        className="absolute top-[78px] self-center h-9 w-9 rounded-full border border-glass-border-light bg-glass-tint-light items-center justify-center"
         onPress={onToggleLike}
         activeOpacity={0.7}
       >
-        <Feather name="heart" size={18} color={liked ? accentColor : 'white'} />
+        <Feather
+          name="heart"
+          size={18}
+          color={liked ? accentColor : theme.colors.text.DEFAULT}
+        />
       </TouchableOpacity>
 
-      {/* Shuffle / Repeat */}
+      {/* Shuffle */}
       <TouchableOpacity
-        style={[
-          styles.smallButton,
-          styles.shuffleButton,
-          isShuffle && [styles.activeSmallButton, { borderColor: accentColor }],
-        ]}
+        className="absolute top-[135px] left-7 h-[38px] w-[38px] rounded-full border border-glass-border-subtle bg-glass-tint items-center justify-center"
+        style={
+          isShuffle
+            ? {
+                borderColor: accentColor,
+                backgroundColor: 'rgba(255,106,169,0.2)',
+              }
+            : undefined
+        }
         onPress={onToggleShuffle}
         activeOpacity={0.7}
       >
         <Feather
           name="shuffle"
           size={17}
-          color={isShuffle ? accentColor : 'white'}
+          color={isShuffle ? accentColor : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
+
+      {/* Repeat */}
       <TouchableOpacity
-        style={[
-          styles.smallButton,
-          styles.repeatButton,
-          isRepeat && [styles.activeSmallButton, { borderColor: accentColor }],
-        ]}
+        className="absolute top-[135px] right-7 h-[38px] w-[38px] rounded-full border border-glass-border-subtle bg-glass-tint items-center justify-center"
+        style={
+          isRepeat
+            ? {
+                borderColor: accentColor,
+                backgroundColor: 'rgba(255,106,169,0.2)',
+              }
+            : undefined
+        }
         onPress={onToggleRepeat}
         activeOpacity={0.7}
       >
         <Feather
           name="repeat"
           size={17}
-          color={isRepeat ? accentColor : 'white'}
+          color={isRepeat ? accentColor : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
 
       {/* Bottom control cluster */}
-      <View style={styles.cluster}>
+      <View className="absolute top-[185px] left-6 right-6 h-[120px] items-center justify-center">
         {/* Skip Back blob */}
         <TouchableOpacity
-          style={[styles.sideBlob, styles.leftBlob]}
+          className="absolute top-7 left-0 w-[110px] h-16 rounded-[32px] bg-glass-pill items-center justify-center"
           onPress={onPrevious}
           activeOpacity={0.7}
         >
           <Feather
             name="skip-back"
             size={20}
-            color="white"
-            style={styles.skipBackIcon}
+            color={theme.colors.text.DEFAULT}
+            className="mr-[18px]"
           />
         </TouchableOpacity>
 
         {/* Skip Forward blob */}
         <TouchableOpacity
-          style={[styles.sideBlob, styles.rightBlob]}
+          className="absolute top-7 right-0 w-[110px] h-16 rounded-[32px] bg-glass-pill items-center justify-center"
           onPress={onNext}
           activeOpacity={0.7}
         >
           <Feather
             name="skip-forward"
             size={20}
-            color="white"
-            style={styles.skipForwardIcon}
+            color={theme.colors.text.DEFAULT}
+            className="ml-[18px]"
           />
         </TouchableOpacity>
 
         {/* Dark ring + artwork orb */}
-        <View style={[styles.ring, { backgroundColor: ringColor }]}>
-          <View style={[styles.orbArt, { shadowColor: glowColor }]}>
-            <Image source={{ uri: artwork }} style={StyleSheet.absoluteFill} />
+        <View
+          className="w-[124px] h-[124px] rounded-full items-center justify-center"
+          style={{ backgroundColor: ringColor }}
+        >
+          <View
+            className="w-[100px] h-[100px] rounded-full overflow-hidden items-center justify-center"
+            style={{
+              shadowColor: glowColor,
+              shadowOpacity: 0.8,
+              shadowRadius: 20,
+              elevation: 12,
+            }}
+          >
+            <Image source={{ uri: artwork }} className="absolute inset-0 h-full w-full" />
             <LinearGradient
               colors={orbGradient}
               start={{ x: 0, y: 0 }}
@@ -133,15 +150,15 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
               style={StyleSheet.absoluteFill}
             />
             <TouchableOpacity
-              style={styles.playBtn}
+              className="w-[60px] h-[60px] rounded-full bg-white items-center justify-center"
               onPress={onTogglePlayback}
               activeOpacity={0.85}
             >
               <Feather
                 name={isPlaying ? 'pause' : 'play'}
                 size={26}
-                color="#1d1040"
-                style={!isPlaying ? styles.playIconOffset : undefined}
+                color={theme.colors.text.dark}
+                className={!isPlaying ? 'ml-[3px]' : undefined}
               />
             </TouchableOpacity>
           </View>
@@ -152,103 +169,3 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
 };
 
 export default PlayerControls;
-
-const styles = StyleSheet.create({
-  heartButton: {
-    position: 'absolute',
-    top: 78,
-    alignSelf: 'center',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  smallButton: {
-    position: 'absolute',
-    top: 135,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shuffleButton: {
-    left: 28,
-  },
-  repeatButton: {
-    right: 28,
-  },
-  activeSmallButton: {
-    borderColor: 'rgba(255,106,169,0.6)',
-    backgroundColor: 'rgba(255,106,169,0.2)',
-  },
-  cluster: {
-    position: 'absolute',
-    top: 185,
-    left: 24,
-    right: 24,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideBlob: {
-    position: 'absolute',
-    top: 28,
-    width: 110,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.13)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  leftBlob: {
-    left: 0,
-  },
-  rightBlob: {
-    right: 0,
-  },
-  skipBackIcon: {
-    marginRight: 18,
-  },
-  skipForwardIcon: {
-    marginLeft: 18,
-  },
-  ring: {
-    width: 124,
-    height: 124,
-    borderRadius: 62,
-    backgroundColor: 'rgba(25,10,80,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbArt: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#ff66ff',
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  playBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playIconOffset: {
-    marginLeft: 3,
-  },
-});

@@ -1,7 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import {
   View,
-  StyleSheet,
   Dimensions,
   StyleProp,
   ViewStyle,
@@ -159,7 +158,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
   return (
     <View
-      style={[styles.arcWrap, style]}
+      className="absolute top-0 left-0 right-0 items-center"
+      style={style}
       pointerEvents="box-none"
       {...panResponder.panHandlers}
     >
@@ -206,13 +206,3 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 };
 
 export default ProgressBar;
-
-const styles = StyleSheet.create({
-  arcWrap: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-});

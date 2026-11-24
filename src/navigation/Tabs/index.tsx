@@ -1,15 +1,17 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import React from 'react';
+import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../../screens/HomeScreen';
 import ProfileScreen from '../../screens/ProfileScreen';
 import GlassTabBar from '../../components/global/GlassTabBar';
 import SearchScreen from '../../screens/SearchScreen';
 
-
 const Tab = createBottomTabNavigator();
+
+const renderTabBar = (props: BottomTabBarProps) => <GlassTabBar {...props} />;
 
 const AppTabs = () => (
   <Tab.Navigator
-    tabBar={(props) => <GlassTabBar {...props} />}
+    tabBar={renderTabBar}
     screenOptions={{ headerShown: false }}
   >
     <Tab.Screen name="Home" component={HomeScreen} />

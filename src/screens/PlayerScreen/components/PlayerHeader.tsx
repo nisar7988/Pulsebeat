@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
+import { theme } from '../../../theme';
 
 export interface PlayerHeaderProps {
   title?: string;
@@ -16,52 +17,24 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({
   rightIconName = 'bell',
 }) => {
   return (
-    <View style={styles.header}>
+    <View className="absolute top-[55px] left-5 right-5 z-10 flex-row items-center justify-between">
       <TouchableOpacity
-        style={styles.headerButton}
+        className="h-11 w-11 items-center justify-center rounded-full border border-glass-border-light bg-glass-tint"
         onPress={onBack}
         activeOpacity={0.7}
       >
-        <Feather name="chevron-left" size={24} color="white" />
+        <Feather name="chevron-left" size={24} color={theme.colors.text.DEFAULT} />
       </TouchableOpacity>
-      <Text style={styles.headerTitle}>{title}</Text>
+      <Text className="text-lg font-semibold tracking-wide text-text">{title}</Text>
       <TouchableOpacity
-        style={styles.headerButton}
+        className="h-11 w-11 items-center justify-center rounded-full border border-glass-border-light bg-glass-tint"
         onPress={onRightPress}
         activeOpacity={0.7}
       >
-        <Feather name={rightIconName} size={19} color="white" />
+        <Feather name={rightIconName} size={19} color={theme.colors.text.DEFAULT} />
       </TouchableOpacity>
     </View>
   );
 };
 
 export default PlayerHeader;
-
-const styles = StyleSheet.create({
-  header: {
-    position: 'absolute',
-    top: 55,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 10,
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-});

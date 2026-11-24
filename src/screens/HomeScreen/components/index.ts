@@ -1,2 +1,12 @@
 export { default as SongCard } from './SongCard';
-export type { SongCardProps } from './SongCard';
+export * from './SongCard';
+export { default as HorizontalSongCard } from './HorizontalSongCard';
+export * from './HorizontalSongCard';
+export { default as SectionHeader } from './SectionHeader';
+export * from './SectionHeader';
+export { default as ArtistAvatarChip } from './ArtistAvatarChip';
+export * from './ArtistAvatarChip';
+export { default as HomeHeader } from './HomeHeader';
+export * from './HomeHeader';
+export { default as GlassMiniPlayer } from '../../../components/global/GlassMiniPlayer';
+export * from '../../../components/global/GlassMiniPlayer';

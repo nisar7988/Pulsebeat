@@ -1,7 +1,2 @@
-import { Text } from 'react-native';
-
-export default function HeaderComponet() {
-  return (
-    <Text>Header Componenet</Text>
-  );
-}
+export { default } from './HeaderComponent';
+export * from './HeaderComponent';

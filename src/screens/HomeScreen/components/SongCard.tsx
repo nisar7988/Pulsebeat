@@ -1,3 +1,4 @@
+import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { useNavigation } from '@react-navigation/native';
@@ -6,18 +7,14 @@ import { Song } from '../../../types/song';
 import { playSong } from '../../../service/player';
 import PlayCircleIcon from '../../../components/ui/PlayButton';
 import { RootStackParamList } from '../../../navigation/types';
+import { theme } from '../../../theme';
 
 export interface SongCardProps {
   song: Song;
   onPlay?: (song: Song) => void;
-  onPause?: () => void;
-  onResume?: () => void;
 }
 
-export default function SongCard({
-  song,
-  onPlay,
-}: SongCardProps) {
+export default function SongCard({ song, onPlay }: SongCardProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const imageUrl = song.image?.[1]?.url || song.image?.[0]?.url;
@@ -41,41 +38,41 @@ export default function SongCard({
   };
 
   return (
-    <View style={styles.cardContainer} className="mx-4 my-2">
+    <View className="mx-4 my-2 overflow-hidden rounded-2xl border border-glass-border">
       {/* Glass blur background */}
       <BlurView
         style={StyleSheet.absoluteFill}
         blurType="light"
         blurAmount={25}
         overlayColor="transparent"
-        reducedTransparencyFallbackColor="#6f5df0"
+        reducedTransparencyFallbackColor={theme.colors.glass.fallback}
       />
       {/* Glass tint overlay */}
-      <View style={styles.tint} />
+      <View className="absolute inset-0 bg-glass-tint" />
 
       {/* Card Content */}
       <View className="flex-row items-center justify-between p-3.5">
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handlePlay}
-          className="flex-row items-center gap-3 flex-1 mr-2"
+          className="mr-2 flex-1 flex-row items-center gap-3"
         >
           {imageUrl ? (
             <Image
               source={{ uri: imageUrl }}
-              style={styles.image}
+              className="h-[50px] w-[50px] rounded-xl"
             />
           ) : null}
 
           <View className="flex-1 justify-center">
             <Text
-              className="text-white font-semibold text-base"
+              className="text-base font-semibold text-text"
               numberOfLines={1}
             >
               {song.name}
             </Text>
             <Text
-              className="text-white/70 text-xs mt-0.5"
+              className="mt-0.5 text-xs text-text-muted"
               numberOfLines={1}
             >
               {artistName}
@@ -86,29 +83,11 @@ export default function SongCard({
         <TouchableOpacity
           onPress={handlePlay}
           activeOpacity={0.7}
-          className="p-1 items-center justify-center"
+          className="items-center justify-center p-1"
         >
-          <PlayCircleIcon color="white" size={32} />
+          <PlayCircleIcon color={theme.colors.text.DEFAULT} size={32} />
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  cardContainer: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
-  },
-  tint: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  image: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-  },
-});

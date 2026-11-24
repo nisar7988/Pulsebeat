@@ -3,8 +3,8 @@ import {
   View,
   Image,
   StatusBar,
-  StyleSheet,
   Dimensions,
+  StyleSheet,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -83,7 +83,7 @@ const NowPlayingScreen = () => {
     song?.image?.[0]?.url ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=900';
 
-  const theme = useSongTheme(artwork);
+  const songTheme = useSongTheme(artwork);
 
   const togglePlayback = async () => {
     try {
@@ -100,13 +100,17 @@ const NowPlayingScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle="light-content" {...{ translucent: true, backgroundColor: 'transparent' }} />
+    <View className="flex-1" style={{ backgroundColor: songTheme.background }}>
+      <StatusBar barStyle="light-content" />
 
       {/* Full-bleed artwork */}
-      <Image source={{ uri: artwork }} style={styles.backgroundImage} />
+      <Image
+        source={{ uri: artwork }}
+        className="absolute inset-0 h-full w-full"
+        resizeMode="cover"
+      />
       <LinearGradient
-        colors={theme.backgroundOverlay}
+        colors={songTheme.backgroundOverlay}
         style={StyleSheet.absoluteFill}
       />
 
@@ -118,32 +122,42 @@ const NowPlayingScreen = () => {
 
       {/* Dome player panel */}
       <LinearGradient
-        colors={theme.panelGradient}
-        style={styles.panel}
+        colors={songTheme.panelGradient}
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: '100%',
+          height: PANEL_H,
+          borderTopLeftRadius: W / 2,
+          borderTopRightRadius: W / 2,
+          overflow: 'hidden',
+        }}
       >
         {/* Arc progress */}
         <ProgressBar
           progress={progress}
           width={W}
-          trackColor={theme.trackColor}
-          progressColor={theme.progressColor}
-          dotColor={theme.dotColor}
+          trackColor={songTheme.trackColor}
+          progressColor={songTheme.progressColor}
+          dotColor={songTheme.dotColor}
           onSeek={handleSeek}
           onScrub={handleScrub}
         />
 
-        {/* Player controls (Heart, Shuffle, Repeat, Previous, Play/Pause, Next) */}
+        {/* Player controls */}
         <PlayerControls
           isPlaying={isPlaying}
           artwork={artwork}
           liked={liked}
           isShuffle={isShuffle}
           isRepeat={isRepeat}
-          accentColor={theme.accentColor}
-          orbGradient={theme.orbGradient}
-          glowColor={theme.glowColor}
-          fanColor={theme.fanColor}
-          ringColor={theme.ringColor}
+          accentColor={songTheme.accentColor}
+          orbGradient={songTheme.orbGradient}
+          glowColor={songTheme.glowColor}
+          fanColor={songTheme.fanColor}
+          ringColor={songTheme.ringColor}
           onTogglePlayback={togglePlayback}
           onPrevious={skipToPreviousSong}
           onNext={skipToNextSong}
@@ -157,25 +171,3 @@ const NowPlayingScreen = () => {
 };
 
 export default NowPlayingScreen;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1c1160',
-  },
-  backgroundImage: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  panel: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    height: PANEL_H,
-    borderTopLeftRadius: W / 2,
-    borderTopRightRadius: W / 2,
-    overflow: 'hidden',
-  },
-});
