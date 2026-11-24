@@ -45,7 +45,7 @@ const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
         {/* sliding indicator */}
         {activeLayout && (
           <Animated.View
-            className="absolute bg-white/30"
+            className="absolute bg-accent/20 border border-accent/40"
             style={{
               top: activeLayout.y,
               width: activeLayout.width,
@@ -84,7 +84,7 @@ const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
               <Feather
                 name={ICONS[route.name] ?? 'circle'}
                 size={24}
-                color={focused ? theme.colors.text.DEFAULT : theme.colors.text.muted}
+                color={focused ? theme.colors.accent.DEFAULT : theme.colors.text.muted}
               />
             </TouchableOpacity>
           );

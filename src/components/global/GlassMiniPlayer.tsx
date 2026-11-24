@@ -147,7 +147,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
           onPress={handleOpenFullPlayer}
           className="flex-1 flex-row items-center gap-3 mr-2"
         >
-          <View className="w-11 h-11 rounded-xl overflow-hidden border border-white/20 bg-white/10 relative">
+          <View className="w-11 h-11 rounded-xl overflow-hidden border border-glass-border bg-glass-tint relative">
             <Image
               source={{ uri: artwork }}
               className="w-full h-full"
@@ -175,7 +175,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleTogglePlayback}
-            className="w-10 h-10 rounded-full bg-white items-center justify-center"
+            className="w-10 h-10 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50"
           >
             <Feather
               name={playing ? 'pause' : 'play'}
@@ -188,9 +188,9 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={handleNext}
-            className="w-9 h-9 rounded-full items-center justify-center border border-white/15 bg-white/10"
+            className="w-9 h-9 rounded-full items-center justify-center border border-glass-border bg-glass-tint"
           >
-            <Feather name="skip-forward" size={17} color="white" />
+            <Feather name="skip-forward" size={17} color={theme.colors.text.DEFAULT} />
           </TouchableOpacity>
         </View>
       </View>

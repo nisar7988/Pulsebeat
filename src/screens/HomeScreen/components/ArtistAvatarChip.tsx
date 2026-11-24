@@ -25,7 +25,7 @@ export const ArtistAvatarChip: React.FC<ArtistAvatarChipProps> = ({
     >
       <View
         className={`w-16 h-16 rounded-full p-0.5 border-2 ${
-          isSelected ? 'border-accent' : 'border-white/20'
+          isSelected ? 'border-accent' : 'border-glass-border'
         }`}
       >
         <Image

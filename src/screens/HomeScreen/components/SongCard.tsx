@@ -85,7 +85,7 @@ export default function SongCard({ song, onPlay }: SongCardProps) {
           activeOpacity={0.7}
           className="items-center justify-center p-1"
         >
-          <PlayCircleIcon color={theme.colors.text.DEFAULT} size={32} />
+          <PlayCircleIcon color={theme.colors.accent.DEFAULT} size={32} />
         </TouchableOpacity>
       </View>
     </View>

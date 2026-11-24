@@ -41,14 +41,14 @@ const MOODS = [
 ];
 
 const BROWSE_CATEGORIES = [
-  { id: '1', label: 'Pop Hits', query: 'Pop Hits', icon: 'music', color: '#ff6aa9' },
-  { id: '2', label: 'Bollywood', query: 'Bollywood Hits', icon: 'heart', color: '#ec4899' },
-  { id: '3', label: 'Punjabi Beats', query: 'Punjabi Hits', icon: 'zap', color: '#f59e0b' },
-  { id: '4', label: 'Lo-Fi & Chill', query: 'Lofi Chill', icon: 'headphones', color: '#8b5cf6' },
-  { id: '5', label: 'Romantic Melodies', query: 'Romantic Songs', icon: 'smile', color: '#f43f5e' },
-  { id: '6', label: 'Hip Hop & Rap', query: 'Hip Hop', icon: 'radio', color: '#3b82f6' },
-  { id: '7', label: 'Workout Energy', query: 'Workout Gym', icon: 'activity', color: '#10b981' },
-  { id: '8', label: 'Trending Top 50', query: 'Trending Top 50', icon: 'trending-up', color: '#a855f7' },
+  { id: '1', label: 'Pop Hits', query: 'Pop Hits', icon: 'music', color: '#C8F929' },
+  { id: '2', label: 'Bollywood', query: 'Bollywood Hits', icon: 'heart', color: '#4ADE80' },
+  { id: '3', label: 'Punjabi Beats', query: 'Punjabi Hits', icon: 'zap', color: '#FACC15' },
+  { id: '4', label: 'Lo-Fi & Chill', query: 'Lofi Chill', icon: 'headphones', color: '#2DD4BF' },
+  { id: '5', label: 'Romantic Melodies', query: 'Romantic Songs', icon: 'smile', color: '#34D399' },
+  { id: '6', label: 'Hip Hop & Rap', query: 'Hip Hop', icon: 'radio', color: '#A3E635' },
+  { id: '7', label: 'Workout Energy', query: 'Workout Gym', icon: 'activity', color: '#C8F929' },
+  { id: '8', label: 'Trending Top 50', query: 'Trending Top 50', icon: 'trending-up', color: '#86EFAC' },
 ];
 
 interface GlassCardProps {
@@ -284,7 +284,7 @@ const SearchScreen = () => {
                   </Text>
                 </View>
                 <View className="h-10 w-10 items-center justify-center rounded-full border border-glass-border bg-glass-tint">
-                  <Feather name="compass" size={20} color={theme.colors.text.DEFAULT} />
+                  <Feather name="compass" size={20} color={theme.colors.accent.DEFAULT} />
                 </View>
               </View>
 
@@ -293,7 +293,7 @@ const SearchScreen = () => {
                 className="mb-4 h-[54px] flex-row items-center gap-3 rounded-full px-4"
                 tintColor={theme.colors.glass.tintActive}
               >
-                <Feather name="search" size={20} color={theme.colors.text.DEFAULT} />
+                <Feather name="search" size={20} color={theme.colors.accent.DEFAULT} />
                 <TextInput
                   value={query}
                   onChangeText={(text) => {
@@ -363,7 +363,7 @@ const SearchScreen = () => {
                         <Text
                           className={`text-sm ${
                             selected
-                              ? 'font-bold text-text'
+                              ? 'font-bold text-accent'
                               : 'font-medium text-text-muted'
                           }`}
                         >
@@ -549,14 +549,14 @@ const SearchScreen = () => {
                   <View
                     className={`h-9 w-9 items-center justify-center rounded-full ${
                       isCurrentSong
-                        ? 'bg-accent'
+                        ? 'bg-accent shadow-sm shadow-accent/50'
                         : 'bg-glass-tint'
                     }`}
                   >
                     <Feather
                       name={isCurrentSong && playing ? 'pause' : 'play'}
                       size={16}
-                      color={theme.colors.text.DEFAULT}
+                      color={isCurrentSong ? theme.colors.text.dark : theme.colors.accent.DEFAULT}
                       className={isCurrentSong && playing ? '' : 'ml-0.5'}
                     />
                   </View>

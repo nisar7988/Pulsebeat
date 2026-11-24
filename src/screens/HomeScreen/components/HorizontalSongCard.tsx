@@ -7,6 +7,8 @@ import { Song } from '../../../types/song';
 import { playSong } from '../../../service/player';
 import { RootStackParamList } from '../../../navigation/types';
 
+import { theme } from '../../../theme';
+
 export interface HorizontalSongCardProps {
   song: Song;
   onPlay?: (song: Song) => void;
@@ -49,10 +51,10 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = ({
       onPress={handlePlay}
       className="w-36 mr-3.5"
     >
-      <View className="w-36 h-36 rounded-2xl overflow-hidden relative border border-white/15 bg-white/10">
+      <View className="w-36 h-36 rounded-2xl overflow-hidden relative border border-glass-border bg-glass-tint">
         <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
-        <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center">
-          <Feather name="play" size={14} color="white" className="ml-0.5" />
+        <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50">
+          <Feather name="play" size={14} color={theme.colors.text.dark} className="ml-0.5" />
         </View>
       </View>
       <Text className="text-sm font-bold text-white mt-2" numberOfLines={1}>

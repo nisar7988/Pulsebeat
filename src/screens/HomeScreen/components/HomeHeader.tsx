@@ -39,7 +39,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={onOpenSearch}
-            className="h-10 w-10 rounded-full border border-white/20 bg-white/10 items-center justify-center"
+            className="h-10 w-10 rounded-full border border-glass-border bg-glass-tint items-center justify-center"
           >
             <Feather name="search" size={18} color="white" />
           </TouchableOpacity>
@@ -63,13 +63,13 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
                 onPress={() => onSelectLanguage(lang)}
                 className={`px-3.5 py-1.5 rounded-full border ${
                   isActive
-                    ? 'border-accent bg-accent/30'
-                    : 'border-white/15 bg-white/10'
+                    ? 'border-accent bg-accent/25'
+                    : 'border-glass-border bg-glass-tint'
                 }`}
               >
                 <Text
                   className={`text-xs capitalize ${
-                    isActive ? 'font-bold text-white' : 'font-medium text-white/70'
+                    isActive ? 'font-bold text-accent' : 'font-medium text-white/70'
                   }`}
                 >
                   {lang}

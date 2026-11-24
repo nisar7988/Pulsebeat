@@ -7,6 +7,7 @@ import {
   PanResponder,
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { theme } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -70,10 +71,10 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   width = SCREEN_WIDTH,
   margin = Math.round(width * 0.062), // ~24px on 390w
   sweepAngleDeg = 57,
-  trackColor = 'rgba(15, 8, 50, 0.75)',
-  progressColor = '#ffffff',
+  trackColor = theme.colors.playerUi.trackBg,
+  progressColor = theme.colors.accent.DEFAULT,
   strokeWidth = 2.5,
-  dotColor = '#ffffff',
+  dotColor = theme.colors.accent.DEFAULT,
   dotRadius = 6,
   showDot = true,
   onSeek,

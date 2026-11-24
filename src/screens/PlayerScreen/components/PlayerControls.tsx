@@ -45,7 +45,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Heart button */}
       <TouchableOpacity
-        className="absolute top-[78px] self-center h-9 w-9 rounded-full border border-glass-border-light bg-glass-tint-light items-center justify-center"
+        className="absolute top-[78px] self-center h-9 w-9 rounded-full border border-glass-border bg-glass-tint items-center justify-center"
         onPress={onToggleLike}
         activeOpacity={0.7}
       >
@@ -58,15 +58,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
 
       {/* Shuffle */}
       <TouchableOpacity
-        className="absolute top-[135px] left-7 h-[38px] w-[38px] rounded-full border border-glass-border-subtle bg-glass-tint items-center justify-center"
-        style={
+        className={`absolute top-[135px] left-7 h-[38px] w-[38px] rounded-full border items-center justify-center ${
           isShuffle
-            ? {
-                borderColor: accentColor,
-                backgroundColor: 'rgba(255,106,169,0.2)',
-              }
-            : undefined
-        }
+            ? 'border-accent bg-accent/20'
+            : 'border-glass-border-subtle bg-glass-tint'
+        }`}
         onPress={onToggleShuffle}
         activeOpacity={0.7}
       >
@@ -79,15 +75,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
 
       {/* Repeat */}
       <TouchableOpacity
-        className="absolute top-[135px] right-7 h-[38px] w-[38px] rounded-full border border-glass-border-subtle bg-glass-tint items-center justify-center"
-        style={
+        className={`absolute top-[135px] right-7 h-[38px] w-[38px] rounded-full border items-center justify-center ${
           isRepeat
-            ? {
-                borderColor: accentColor,
-                backgroundColor: 'rgba(255,106,169,0.2)',
-              }
-            : undefined
-        }
+            ? 'border-accent bg-accent/20'
+            : 'border-glass-border-subtle bg-glass-tint'
+        }`}
         onPress={onToggleRepeat}
         activeOpacity={0.7}
       >
@@ -102,7 +94,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
       <View className="absolute top-[185px] left-6 right-6 h-[120px] items-center justify-center">
         {/* Skip Back blob */}
         <TouchableOpacity
-          className="absolute top-7 left-0 w-[110px] h-16 rounded-[32px] bg-glass-pill items-center justify-center"
+          className="absolute top-7 left-0 w-[110px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
           onPress={onPrevious}
           activeOpacity={0.7}
         >
@@ -116,7 +108,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
 
         {/* Skip Forward blob */}
         <TouchableOpacity
-          className="absolute top-7 right-0 w-[110px] h-16 rounded-[32px] bg-glass-pill items-center justify-center"
+          className="absolute top-7 right-0 w-[110px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
           onPress={onNext}
           activeOpacity={0.7}
         >
@@ -150,7 +142,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
               style={StyleSheet.absoluteFill}
             />
             <TouchableOpacity
-              className="w-[60px] h-[60px] rounded-full bg-white items-center justify-center"
+              className="w-[60px] h-[60px] rounded-full bg-accent items-center justify-center shadow-lg shadow-accent/60"
               onPress={onTogglePlayback}
               activeOpacity={0.85}
             >

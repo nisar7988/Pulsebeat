@@ -170,7 +170,7 @@ export const OnboardingScreen = () => {
     <View className="flex-1 bg-background">
       {/* High-contrast gradient background */}
       <LinearGradient
-        colors={['#1c1160', '#0B0B14']}
+        colors={theme.gradients.app}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -180,8 +180,8 @@ export const OnboardingScreen = () => {
         {/* Top Header */}
         <View className="px-5 pt-2 pb-2 z-10 flex-row items-center justify-between">
           <View className="flex-row items-center gap-2.5">
-            <View className="h-9 w-9 rounded-xl border border-white/20 bg-white/10 items-center justify-center">
-              <Feather name="activity" size={20} color={theme.colors.accent.DEFAULT} />
+            <View className="h-9 w-9 rounded-xl border border-glass-border bg-glass-tint items-center justify-center">
+              <Feather name="headphones" size={18} color={theme.colors.accent.DEFAULT} />
             </View>
             <Text className="text-xl font-bold tracking-tight text-white">
               Pulse<Text className="text-accent">Beat</Text>
@@ -191,7 +191,7 @@ export const OnboardingScreen = () => {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={handleFinish}
-            className="rounded-full border border-white/20 bg-white/10 px-4 py-1.5"
+            className="rounded-full border border-glass-border bg-glass-tint px-4 py-1.5"
           >
             <Text className="text-xs font-semibold text-white/80">Skip</Text>
           </TouchableOpacity>
@@ -199,7 +199,7 @@ export const OnboardingScreen = () => {
 
         {/* Progress Line */}
         <View className="px-5 py-2">
-          <View className="h-1.5 w-full bg-white/15 rounded-full overflow-hidden">
+          <View className="h-1.5 w-full bg-glass-tint border border-glass-border/40 rounded-full overflow-hidden">
             <View
               className={`h-full bg-accent rounded-full transition-all ${
                 currentStep === 1 ? 'w-1/3' : currentStep === 2 ? 'w-2/3' : 'w-full'
@@ -210,7 +210,7 @@ export const OnboardingScreen = () => {
 
         {/* Step Title Header */}
         <View className="px-5 pt-2 pb-2">
-          <View className="self-start rounded-full bg-accent/25 border border-accent/50 px-3 py-1 mb-2">
+          <View className="self-start rounded-full bg-accent/20 border border-accent/40 px-3 py-1 mb-2">
             <Text className="text-[11px] font-bold tracking-wider text-accent uppercase">
               {stepMeta.badge}
             </Text>
@@ -244,7 +244,7 @@ export const OnboardingScreen = () => {
                     className={`flex-1 p-3.5 rounded-2xl border overflow-hidden relative ${
                       selected
                         ? 'border-accent bg-accent/25'
-                        : 'border-white/15 bg-white/10'
+                        : 'border-glass-border bg-glass-tint'
                     }`}
                   >
                     <BlurView
@@ -270,11 +270,11 @@ export const OnboardingScreen = () => {
                         className={`h-6 w-6 rounded-full items-center justify-center border ${
                           selected
                             ? 'border-accent bg-accent'
-                            : 'border-white/25 bg-white/10'
+                            : 'border-glass-border bg-glass-tint'
                         }`}
                       >
                         {selected ? (
-                          <Feather name="check" size={14} color="white" />
+                          <Feather name="check" size={14} color={theme.colors.text.dark} />
                         ) : null}
                       </View>
                     </View>
@@ -302,7 +302,7 @@ export const OnboardingScreen = () => {
                     className={`flex-1 p-3.5 rounded-2xl border overflow-hidden relative ${
                       selected
                         ? 'border-accent bg-accent/25'
-                        : 'border-white/15 bg-white/10'
+                        : 'border-glass-border bg-glass-tint'
                     }`}
                   >
                     <BlurView
@@ -315,24 +315,24 @@ export const OnboardingScreen = () => {
                     <View className="flex-row items-center justify-between mb-2">
                       <View
                         className={`h-9 w-9 rounded-xl items-center justify-center ${
-                          selected ? 'bg-accent' : 'bg-white/20'
+                          selected ? 'bg-accent' : 'bg-glass-tint border border-glass-border'
                         }`}
                       >
                         <Feather
                           name={item.icon}
                           size={18}
-                          color="white"
+                          color={selected ? theme.colors.text.dark : 'white'}
                         />
                       </View>
                       <View
                         className={`h-5 w-5 rounded-full items-center justify-center border ${
                           selected
                             ? 'border-accent bg-accent'
-                            : 'border-white/25 bg-white/10'
+                            : 'border-glass-border bg-glass-tint'
                         }`}
                       >
                         {selected ? (
-                          <Feather name="check" size={12} color="white" />
+                          <Feather name="check" size={12} color={theme.colors.text.dark} />
                         ) : null}
                       </View>
                     </View>
@@ -351,7 +351,7 @@ export const OnboardingScreen = () => {
           {currentStep === 3 && (
             <View className="flex-1">
               {/* Live Artist Search Bar */}
-              <View className="flex-row items-center gap-2.5 h-11 px-3.5 rounded-2xl border border-white/20 bg-white/10 mb-3">
+              <View className="flex-row items-center gap-2.5 h-11 px-3.5 rounded-2xl border border-glass-border bg-glass-tint mb-3">
                 <Feather name="search" size={16} color="rgba(255,255,255,0.7)" />
                 <TextInput
                   value={searchQuery}
@@ -401,7 +401,7 @@ export const OnboardingScreen = () => {
                         className={`flex-1 p-2.5 rounded-2xl border items-center overflow-hidden relative ${
                           selected
                             ? 'border-accent bg-accent/25'
-                            : 'border-white/15 bg-white/10'
+                            : 'border-glass-border bg-glass-tint'
                         }`}
                       >
                         <BlurView
@@ -415,20 +415,20 @@ export const OnboardingScreen = () => {
                           <Image
                             source={{ uri: item.avatar }}
                             className={`w-16 h-16 rounded-full border-2 ${
-                              selected ? 'border-accent' : 'border-white/25'
+                              selected ? 'border-accent' : 'border-glass-border'
                             }`}
                           />
                           <View
                             className={`absolute bottom-0 right-0 h-5 w-5 rounded-full items-center justify-center border ${
                               selected
                                 ? 'border-accent bg-accent'
-                                : 'border-white/30 bg-card'
+                                : 'border-glass-border bg-card'
                             }`}
                           >
                             <Feather
                               name={selected ? 'check' : 'plus'}
                               size={12}
-                              color={selected ? 'white' : 'rgba(255,255,255,0.7)'}
+                              color={selected ? theme.colors.text.dark : 'rgba(255,255,255,0.7)'}
                             />
                           </View>
                         </View>
@@ -459,7 +459,7 @@ export const OnboardingScreen = () => {
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleBack}
-              className="h-13 w-13 rounded-full border border-white/20 bg-white/10 items-center justify-center"
+              className="h-13 w-13 rounded-full border border-glass-border bg-glass-tint items-center justify-center"
             >
               <Feather
                 name="chevron-left"
@@ -473,28 +473,24 @@ export const OnboardingScreen = () => {
             activeOpacity={0.85}
             disabled={!stepMeta.canContinue}
             onPress={handleNext}
-            className={`flex-1 h-13 rounded-full overflow-hidden items-center justify-center relative ${
+            className={`flex-1 h-13 rounded-full overflow-hidden items-center justify-center relative shadow-md shadow-accent/40 ${
               !stepMeta.canContinue ? 'opacity-50' : ''
             }`}
           >
             <LinearGradient
-              colors={
-                currentStep === 3
-                  ? theme.gradients.app
-                  : ['#8B5CF6', '#22D3EE']
-              }
+              colors={theme.gradients.lime}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={StyleSheet.absoluteFill}
             />
             <View className="flex-row items-center gap-2">
-              <Text className="text-base font-bold text-white tracking-wide">
+              <Text className="text-base font-extrabold text-text-dark tracking-wide">
                 {stepMeta.cta}
               </Text>
               <Feather
                 name={currentStep === 3 ? 'play' : 'arrow-right'}
                 size={18}
-                color="white"
+                color={theme.colors.text.dark}
               />
             </View>
           </TouchableOpacity>
