@@ -38,6 +38,10 @@ export interface CurrentSongStore {
   setCurrentSong: (song: Song | null) => void;
   isPlaying: boolean;
   setIsPlaying: (playing: boolean) => void;
+  isShuffle: boolean;
+  setIsShuffle: (shuffle: boolean) => void;
+  isRepeat: boolean;
+  setIsRepeat: (repeat: boolean) => void;
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
 }
@@ -52,6 +56,14 @@ export const useCurrentSongStore = create<CurrentSongStore>()(
       isPlaying: false,
 
       setIsPlaying: (isPlaying) => set({ isPlaying }),
+
+      isShuffle: false,
+
+      setIsShuffle: (isShuffle) => set({ isShuffle }),
+
+      isRepeat: false,
+
+      setIsRepeat: (isRepeat) => set({ isRepeat }),
 
       _hasHydrated: false,
 

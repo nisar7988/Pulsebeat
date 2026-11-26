@@ -1,4 +1,10 @@
-import TrackPlayer, { Capability, Event, RepeatMode, State } from 'react-native-track-player';
+import TrackPlayer, {
+  AppKilledPlaybackBehavior,
+  Capability,
+  Event,
+  RepeatMode,
+  State,
+} from 'react-native-track-player';
 import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
 import { useUserStore, AudioQuality } from '../store/useUserStore';
@@ -40,10 +46,16 @@ export const initializePlayer = async () => {
         Capability.SeekTo,
       ],
       compactCapabilities: [Capability.Play, Capability.Pause],
+      progressUpdateEventInterval: 2,
+      android: {
+        appKilledPlaybackBehavior: AppKilledPlaybackBehavior.PausePlayback,
+      },
     });
     registerPlaybackStateSync();
-    if (useUserStore.getState().repeatByDefault) {
+    const repeatEnabled = useUserStore.getState().repeatByDefault;
+    if (repeatEnabled) {
       await TrackPlayer.setRepeatMode(RepeatMode.Track);
+      useCurrentSongStore.getState().setIsRepeat(true);
     }
     isPlayerInitialized = true;
   } catch (error: any) {
@@ -154,6 +166,7 @@ export const playSong = async (song?: Song) => {
         title: currentSong.name,
         artist: artistName,
         artwork: artwork,
+        duration: currentSong.duration || undefined,
       });
 
       await TrackPlayer.play();
@@ -229,6 +242,7 @@ export const playQueueAndNavigate = (
               title: s.name,
               artist: getSongArtistName(s),
               artwork: getSongArtwork(s),
+              duration: s.duration || undefined,
             };
           })
           .filter((t): t is NonNullable<typeof t> => t !== null);
@@ -283,6 +297,19 @@ export const stopSong = async () => {
 export const skipToNextSong = async () => {
   try {
     await initializePlayer();
+    const isShuffle = useCurrentSongStore.getState().isShuffle;
+    if (isShuffle) {
+      const queue = await TrackPlayer.getQueue();
+      const activeIdx = await TrackPlayer.getActiveTrackIndex();
+      if (queue.length > 1) {
+        let nextIdx = Math.floor(Math.random() * queue.length);
+        if (nextIdx === activeIdx) {
+          nextIdx = (nextIdx + 1) % queue.length;
+        }
+        await TrackPlayer.skip(nextIdx);
+        return;
+      }
+    }
     await TrackPlayer.skipToNext();
   } catch (e) {
     console.log('Skip next error:', e);
@@ -302,7 +329,32 @@ export const seekTo = async (position: number) => {
   try {
     await initializePlayer();
     await TrackPlayer.seekTo(position);
+    syncPlaybackWidget();
   } catch (e) {
     console.log('Seek error:', e);
+  }
+};
+
+export const toggleShuffleMode = async (): Promise<boolean> => {
+  const next = !useCurrentSongStore.getState().isShuffle;
+  useCurrentSongStore.getState().setIsShuffle(next);
+  syncPlaybackWidget();
+  return next;
+};
+
+export const toggleRepeatMode = async (): Promise<boolean> => {
+  try {
+    await initializePlayer();
+    const currentMode = await TrackPlayer.getRepeatMode();
+    const nextEnabled = currentMode !== RepeatMode.Track;
+    await TrackPlayer.setRepeatMode(
+      nextEnabled ? RepeatMode.Track : RepeatMode.Off,
+    );
+    useCurrentSongStore.getState().setIsRepeat(nextEnabled);
+    syncPlaybackWidget();
+    return nextEnabled;
+  } catch (e) {
+    console.log('Toggle repeat error:', e);
+    return useCurrentSongStore.getState().isRepeat;
   }
 };

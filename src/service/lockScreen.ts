@@ -2,6 +2,7 @@ import { NativeModules, Platform } from 'react-native';
 
 interface LockScreenNativeModule {
   setShowWhenLocked(enabled: boolean): void;
+  isAppRunning(): Promise<boolean>;
   isDeviceLocked(): Promise<boolean>;
   requestDismissKeyguard(): Promise<boolean>;
 }
@@ -9,6 +10,15 @@ interface LockScreenNativeModule {
 const nativeLockScreen = NativeModules.LockScreenModule as
   | LockScreenNativeModule
   | undefined;
+
+export async function isAppRunningInBackground(): Promise<boolean> {
+  if (Platform.OS !== 'android' || !nativeLockScreen) return true;
+  try {
+    return await nativeLockScreen.isAppRunning();
+  } catch {
+    return false;
+  }
+}
 
 export function setShowPlayerOnLockScreen(enabled: boolean): void {
   if (Platform.OS !== 'android') return;

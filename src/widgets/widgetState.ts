@@ -1,9 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import TrackPlayer, { State } from 'react-native-track-player';
+import TrackPlayer, { RepeatMode, State } from 'react-native-track-player';
 import type { ImageWidgetSource } from 'react-native-android-widget';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
 import { Song } from '../types/song';
 import { getSongArtistName, getSongArtwork } from '../service/player';
+import { isAppRunningInBackground } from '../service/lockScreen';
+import {
+  DEFAULT_WIDGET_THEME,
+  getWidgetThemeForArtwork,
+  type WidgetThemeColors,
+} from '../theme/songPalette';
 
 export interface WidgetPlaybackSnapshot {
   title: string;
@@ -11,6 +17,11 @@ export interface WidgetPlaybackSnapshot {
   artwork?: ImageWidgetSource;
   isPlaying: boolean;
   hasSong: boolean;
+  position: number;
+  duration: number;
+  isShuffle: boolean;
+  isRepeat: boolean;
+  theme: WidgetThemeColors;
   fallbackSong: Song | null;
 }
 
@@ -46,44 +57,80 @@ export async function getPersistedCurrentSong(): Promise<Song | null> {
 }
 
 /**
- * Resolves the current track metadata and playback state for the Android widget.
+ * Resolves the current track metadata, dynamic colors, progress, and playback state.
  */
-export async function getWidgetPlaybackState(): Promise<WidgetPlaybackSnapshot> {
-  const fallbackSong = await getPersistedCurrentSong();
+export async function getWidgetPlaybackState(progressOverride?: {
+  position: number;
+  duration: number;
+}): Promise<WidgetPlaybackSnapshot> {
+  const [fallbackSong, appRunning] = await Promise.all([
+    getPersistedCurrentSong(),
+    isAppRunningInBackground(),
+  ]);
+  const storeState = useCurrentSongStore.getState();
 
   try {
-    const [activeTrack, playbackState] = await Promise.all([
+    const [activeTrack, playbackState, progress, repeatMode] = await Promise.all([
       TrackPlayer.getActiveTrack().catch(() => undefined),
       TrackPlayer.getPlaybackState().catch(() => undefined),
+      progressOverride
+        ? Promise.resolve(progressOverride)
+        : TrackPlayer.getProgress().catch(() => undefined),
+      TrackPlayer.getRepeatMode().catch(() => undefined),
     ]);
 
     const isPlaying =
-      playbackState?.state === State.Playing ||
-      playbackState?.state === State.Buffering;
+      appRunning &&
+      (playbackState?.state === State.Playing ||
+        playbackState?.state === State.Buffering);
+
+    const isRepeat =
+      repeatMode !== undefined ? repeatMode === RepeatMode.Track : storeState.isRepeat;
+
+    const position = Math.max(0, progress?.position ?? 0);
+    const duration = Math.max(
+      0,
+      progress?.duration || activeTrack?.duration || fallbackSong?.duration || 0,
+    );
 
     if (activeTrack) {
+      const artworkUrl =
+        (activeTrack.artwork as string | undefined) ||
+        (fallbackSong ? getSongArtwork(fallbackSong) : undefined);
+      const theme = await getWidgetThemeForArtwork(artworkUrl);
+
       return {
         title: activeTrack.title || fallbackSong?.name || 'PulseBeat',
         artist:
           activeTrack.artist ||
           (fallbackSong ? getSongArtistName(fallbackSong) : 'Tap to play music'),
-        artwork: toWidgetImageSource(
-          (activeTrack.artwork as string | undefined) ||
-            (fallbackSong ? getSongArtwork(fallbackSong) : undefined),
-        ),
+        artwork: toWidgetImageSource(artworkUrl),
         isPlaying,
         hasSong: true,
+        position,
+        duration,
+        isShuffle: storeState.isShuffle,
+        isRepeat,
+        theme,
         fallbackSong,
       };
     }
 
     if (fallbackSong) {
+      const artworkUrl = getSongArtwork(fallbackSong);
+      const theme = await getWidgetThemeForArtwork(artworkUrl);
+
       return {
         title: fallbackSong.name || 'PulseBeat',
         artist: getSongArtistName(fallbackSong),
-        artwork: toWidgetImageSource(getSongArtwork(fallbackSong)),
+        artwork: toWidgetImageSource(artworkUrl),
         isPlaying: false,
         hasSong: true,
+        position: 0,
+        duration: fallbackSong.duration || 0,
+        isShuffle: storeState.isShuffle,
+        isRepeat,
+        theme,
         fallbackSong,
       };
     }
@@ -97,6 +144,11 @@ export async function getWidgetPlaybackState(): Promise<WidgetPlaybackSnapshot> 
     artwork: undefined,
     isPlaying: false,
     hasSong: false,
+    position: 0,
+    duration: 0,
+    isShuffle: storeState.isShuffle,
+    isRepeat: storeState.isRepeat,
+    theme: DEFAULT_WIDGET_THEME,
     fallbackSong: null,
   };
 }

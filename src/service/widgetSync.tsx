@@ -9,7 +9,11 @@ import {
 
 export const PULSEBEAT_WIDGET_NAME = 'PulseBeatPlayer';
 
+const PROGRESS_SYNC_THROTTLE_MS = 1800;
+
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let lastProgressSyncAt = 0;
+let updateInFlight = false;
 
 export function buildPulseBeatWidgetElement(
   widgetInfo: Pick<WidgetInfo, 'width' | 'height'>,
@@ -22,10 +26,34 @@ export function buildPulseBeatWidgetElement(
       artwork={snapshot.artwork}
       isPlaying={snapshot.isPlaying}
       hasSong={snapshot.hasSong}
+      position={snapshot.position}
+      duration={snapshot.duration}
+      isShuffle={snapshot.isShuffle}
+      isRepeat={snapshot.isRepeat}
+      theme={snapshot.theme}
       width={widgetInfo.width}
       height={widgetInfo.height}
     />
   );
+}
+
+async function performWidgetUpdate(progressOverride?: {
+  position: number;
+  duration: number;
+}): Promise<void> {
+  if (updateInFlight) return;
+  updateInFlight = true;
+  try {
+    const snapshot = await getWidgetPlaybackState(progressOverride);
+    await requestWidgetUpdate({
+      widgetName: PULSEBEAT_WIDGET_NAME,
+      renderWidget: (info) => buildPulseBeatWidgetElement(info, snapshot),
+    });
+  } catch (e) {
+    console.log('syncPlaybackWidget error:', e);
+  } finally {
+    updateInFlight = false;
+  }
 }
 
 /**
@@ -39,16 +67,22 @@ export function syncPlaybackWidget(): void {
     clearTimeout(syncTimer);
   }
 
-  syncTimer = setTimeout(async () => {
+  syncTimer = setTimeout(() => {
     syncTimer = null;
-    try {
-      const snapshot = await getWidgetPlaybackState();
-      await requestWidgetUpdate({
-        widgetName: PULSEBEAT_WIDGET_NAME,
-        renderWidget: (info) => buildPulseBeatWidgetElement(info, snapshot),
-      });
-    } catch (e) {
-      console.log('syncPlaybackWidget error:', e);
-    }
+    lastProgressSyncAt = Date.now();
+    performWidgetUpdate().catch(() => {});
   }, 80);
+}
+
+/**
+ * Updates the Android widget's progress bar & timestamp from TrackPlayer's
+ * background service PlaybackProgressUpdated events (throttled every ~1.8s).
+ */
+export function syncWidgetProgress(position: number, duration: number): void {
+  if (Platform.OS !== 'android') return;
+  const now = Date.now();
+  if (now - lastProgressSyncAt < PROGRESS_SYNC_THROTTLE_MS) return;
+
+  lastProgressSyncAt = now;
+  performWidgetUpdate({ position, duration }).catch(() => {});
 }

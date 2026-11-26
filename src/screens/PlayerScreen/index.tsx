@@ -18,6 +18,8 @@ import {
   skipToNextSong,
   skipToPreviousSong,
   seekTo,
+  toggleRepeatMode,
+  toggleShuffleMode,
   getSongArtistName,
   getSongArtwork,
 } from '../../service/player';
@@ -25,7 +27,7 @@ import ProgressBar from '../../components/ui/ProgressBar';
 import { PlayerHeader, SongInfo, PlayerControls } from './components';
 import { useSongTheme } from '../../hooks/useSongTheme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
-import { useListeningStore, useUserStore } from '../../store';
+import { useListeningStore } from '../../store';
 import {
   isDeviceLocked,
   requestUnlockToLeavePlayer,
@@ -107,8 +109,8 @@ const NowPlayingScreen = () => {
   const activeSong = song || currentSong;
 
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(() => useUserStore.getState().repeatByDefault);
+  const isShuffle = useCurrentSongStore((state) => state.isShuffle);
+  const isRepeat = useCurrentSongStore((state) => state.isRepeat);
 
   const liked = useListeningStore((state) =>
     activeSong ? state.likedSongs.some((s) => s.id === activeSong.id) : false,
@@ -250,8 +252,12 @@ const NowPlayingScreen = () => {
               toggleLikeSong(activeSong);
             }
           }}
-          onToggleShuffle={() => setIsShuffle((prev) => !prev)}
-          onToggleRepeat={() => setIsRepeat((prev) => !prev)}
+          onToggleShuffle={() => {
+            toggleShuffleMode();
+          }}
+          onToggleRepeat={() => {
+            toggleRepeatMode();
+          }}
         />
       </LinearGradient>
     </View>

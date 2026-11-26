@@ -1,5 +1,6 @@
 package com.pulsebeat.lockscreen
 
+import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
@@ -28,6 +29,17 @@ class LockScreenModule(reactContext: ReactApplicationContext) :
           activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
         }
       }
+    }
+  }
+
+  @ReactMethod
+  fun isAppRunning(promise: Promise) {
+    try {
+      val am = reactApplicationContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+      val hasTask = am?.appTasks?.isNotEmpty() == true
+      promise.resolve(hasTask)
+    } catch (e: Exception) {
+      promise.resolve(false)
     }
   }
 

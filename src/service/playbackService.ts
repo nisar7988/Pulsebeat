@@ -1,5 +1,5 @@
 import TrackPlayer, { Event } from 'react-native-track-player';
-import { syncPlaybackWidget } from './widgetSync';
+import { syncPlaybackWidget, syncWidgetProgress } from './widgetSync';
 
 export const playbackService = async () => {
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
@@ -18,5 +18,17 @@ export const playbackService = async () => {
     await TrackPlayer.skipToPrevious();
     syncPlaybackWidget();
   });
-  TrackPlayer.addEventListener(Event.RemoteSeek, (event) => TrackPlayer.seekTo(event.position));
+  TrackPlayer.addEventListener(Event.RemoteSeek, async (event) => {
+    await TrackPlayer.seekTo(event.position);
+    syncPlaybackWidget();
+  });
+  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, (event) => {
+    syncWidgetProgress(event.position, event.duration);
+  });
+  TrackPlayer.addEventListener(Event.PlaybackState, () => {
+    syncPlaybackWidget();
+  });
+  TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, () => {
+    syncPlaybackWidget();
+  });
 };
