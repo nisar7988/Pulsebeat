@@ -25,6 +25,7 @@ import ProgressBar from '../../components/ui/ProgressBar';
 import { PlayerHeader, SongInfo, PlayerControls } from './components';
 import { useSongTheme } from '../../hooks/useSongTheme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
+import { useListeningStore, useUserStore } from '../../store';
 
 const { width: W } = Dimensions.get('window');
 const PANEL_H = 340;
@@ -98,9 +99,13 @@ const NowPlayingScreen = () => {
   const activeSong = song || currentSong;
 
   const [isPlaying, setIsPlaying] = useState(true);
-  const [liked, setLiked] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(() => useUserStore.getState().repeatByDefault);
+
+  const liked = useListeningStore((state) =>
+    activeSong ? state.likedSongs.some((s) => s.id === activeSong.id) : false,
+  );
+  const toggleLikeSong = useListeningStore((state) => state.toggleLikeSong);
 
   // Sync isPlaying state with TrackPlayer
   useEffect(() => {
@@ -203,7 +208,11 @@ const NowPlayingScreen = () => {
           onTogglePlayback={togglePlayback}
           onPrevious={skipToPreviousSong}
           onNext={skipToNextSong}
-          onToggleLike={() => setLiked((prev) => !prev)}
+          onToggleLike={() => {
+            if (activeSong) {
+              toggleLikeSong(activeSong);
+            }
+          }}
           onToggleShuffle={() => setIsShuffle((prev) => !prev)}
           onToggleRepeat={() => setIsRepeat((prev) => !prev)}
         />

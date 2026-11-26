@@ -29,11 +29,20 @@ const safeAsyncStorage = {
   },
 };
 
+export type AudioQuality = 'high' | 'medium' | 'low';
+
 export interface UserPreferencesState {
   hasCompletedOnboarding: boolean;
   selectedLanguages: string[];
   selectedGenres: string[];
   selectedArtists: string[];
+  profileName: string;
+  profileHandle: string;
+  avatarId: string;
+  joinedAt: number;
+  audioQuality: AudioQuality;
+  autoPlay: boolean;
+  repeatByDefault: boolean;
   _hasHydrated: boolean;
 
   toggleLanguage: (language: string) => void;
@@ -42,6 +51,14 @@ export interface UserPreferencesState {
   setGenres: (genres: string[]) => void;
   toggleArtist: (artist: string) => void;
   setArtists: (artists: string[]) => void;
+  updateProfile: (profile: {
+    profileName?: string;
+    profileHandle?: string;
+    avatarId?: string;
+  }) => void;
+  setAudioQuality: (quality: AudioQuality) => void;
+  setAutoPlay: (autoPlay: boolean) => void;
+  setRepeatByDefault: (repeat: boolean) => void;
   completeOnboarding: () => void;
   resetPreferences: () => void;
   setHasHydrated: (state: boolean) => void;
@@ -54,6 +71,13 @@ export const useUserStore = create<UserPreferencesState>()(
       selectedLanguages: ['English'],
       selectedGenres: [],
       selectedArtists: [],
+      profileName: 'PulseBeat Listener',
+      profileHandle: '@pulsebeat',
+      avatarId: 'neon-disc',
+      joinedAt: Date.now(),
+      audioQuality: 'high',
+      autoPlay: true,
+      repeatByDefault: false,
       _hasHydrated: false,
 
       toggleLanguage: (language: string) => {
@@ -95,6 +119,20 @@ export const useUserStore = create<UserPreferencesState>()(
       },
 
       setArtists: (artists: string[]) => set({ selectedArtists: artists }),
+
+      updateProfile: (profile) =>
+        set((state) => ({
+          profileName: profile.profileName !== undefined ? profile.profileName : state.profileName,
+          profileHandle:
+            profile.profileHandle !== undefined ? profile.profileHandle : state.profileHandle,
+          avatarId: profile.avatarId !== undefined ? profile.avatarId : state.avatarId,
+        })),
+
+      setAudioQuality: (audioQuality: AudioQuality) => set({ audioQuality }),
+
+      setAutoPlay: (autoPlay: boolean) => set({ autoPlay }),
+
+      setRepeatByDefault: (repeatByDefault: boolean) => set({ repeatByDefault }),
 
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
 

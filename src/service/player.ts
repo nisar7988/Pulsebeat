@@ -1,6 +1,8 @@
-import TrackPlayer, { Capability, Event, State } from 'react-native-track-player';
+import TrackPlayer, { Capability, Event, RepeatMode, State } from 'react-native-track-player';
 import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
+import { useUserStore, AudioQuality } from '../store/useUserStore';
+import { useListeningStore } from '../store/useListeningStore';
 
 let isPlayerInitialized = false;
 let isInitializing = false;
@@ -35,6 +37,9 @@ export const initializePlayer = async () => {
       compactCapabilities: [Capability.Play, Capability.Pause],
     });
     registerPlaybackStateSync();
+    if (useUserStore.getState().repeatByDefault) {
+      await TrackPlayer.setRepeatMode(RepeatMode.Track);
+    }
     isPlayerInitialized = true;
   } catch (error: any) {
     if (
@@ -72,6 +77,21 @@ export const getSongArtwork = (song?: Song | null): string => {
   );
 };
 
+function pickAudioUrlByQuality(
+  urls: Array<{ quality?: string; url?: string }>,
+  quality: AudioQuality,
+): string | undefined {
+  if (!urls.length) return undefined;
+  if (quality === 'high') {
+    return urls[urls.length - 1]?.url || urls[0]?.url;
+  }
+  if (quality === 'medium') {
+    const midIndex = Math.floor((urls.length - 1) / 2);
+    return urls[midIndex]?.url || urls[urls.length - 1]?.url || urls[0]?.url;
+  }
+  return urls[0]?.url || urls[urls.length - 1]?.url;
+}
+
 export const playSong = async (song?: Song) => {
   const targetId = song?.id ?? useCurrentSongStore.getState().currentSong?.id;
   if (targetId && inFlightSongId === targetId) {
@@ -98,8 +118,9 @@ export const playSong = async (song?: Song) => {
     }
 
     const artistName = getSongArtistName(currentSong);
+    const quality = useUserStore.getState().audioQuality;
     const downloadUrls = currentSong.downloadUrl || [];
-    let audioUrl = downloadUrls[downloadUrls.length - 1]?.url || downloadUrls[0]?.url;
+    let audioUrl = pickAudioUrlByQuality(downloadUrls, quality);
 
     // Fallback: fetch song details if downloadUrl is missing or empty
     if (!audioUrl && currentSong.id) {
@@ -110,8 +131,7 @@ export const playSong = async (song?: Song) => {
         const data = await res.json();
         const songDetail = data?.data?.[0];
         if (songDetail?.downloadUrl?.length) {
-          const detailUrls = songDetail.downloadUrl;
-          audioUrl = detailUrls[detailUrls.length - 1]?.url || detailUrls[0]?.url;
+          audioUrl = pickAudioUrlByQuality(songDetail.downloadUrl, quality);
         }
       } catch (err) {
         console.log('Error fetching audioUrl fallback:', err);
@@ -132,6 +152,7 @@ export const playSong = async (song?: Song) => {
       });
 
       await TrackPlayer.play();
+      useListeningStore.getState().recordPlay(currentSong);
     } else {
       // Stop previous track so it does not keep playing in the background
       await TrackPlayer.stop();
