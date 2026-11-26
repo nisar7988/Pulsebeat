@@ -106,7 +106,7 @@ const NowPlayingScreen = () => {
   const activeTrack = useActiveTrack();
   const { playing } = useIsPlaying();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
-  const activeSong = song || currentSong;
+  const activeSong = currentSong || song;
 
   const [isPlaying, setIsPlaying] = useState(true);
   const isShuffle = useCurrentSongStore((state) => state.isShuffle);
@@ -153,16 +153,18 @@ const NowPlayingScreen = () => {
     };
   }, [navigation]);
 
-  // Ensure activeSong plays if TrackPlayer is not already playing this song
+  // Ensure route song plays once when opening PlayerScreen if TrackPlayer isn't already on it
   useEffect(() => {
-    if (!activeSong || activeTrack?.id === activeSong.id) return;
+    if (!song || activeTrack?.id === song.id) return;
+    if (currentSong && currentSong.id !== song.id) return;
     const timer = setTimeout(() => {
-      playSong(activeSong).catch((err: any) =>
+      playSong(song).catch((err: any) =>
         console.log('PlayerScreen playSong error:', err),
       );
     }, 150);
     return () => clearTimeout(timer);
-  }, [activeSong, activeTrack?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [song?.id]);
 
   // Prioritize activeSong so UI immediately updates to clicked song without waiting for TrackPlayer native bridge
   const title = activeSong?.name || activeTrack?.title || 'Midnight Dreams';

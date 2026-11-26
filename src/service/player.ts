@@ -4,17 +4,42 @@ import TrackPlayer, {
   Event,
   RepeatMode,
   State,
+  type AddTrack,
 } from 'react-native-track-player';
 import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
 import { useUserStore, AudioQuality } from '../store/useUserStore';
 import { useListeningStore } from '../store/useListeningStore';
+import { getSongSuggestions } from './music';
 import { syncPlaybackWidget } from './widgetSync';
 
 let isPlayerInitialized = false;
 let isInitializing = false;
 let playbackListenerRegistered = false;
 let inFlightSongId: string | null = null;
+let suggestionsInFlight: { songId: string; promise: Promise<void> } | null = null;
+
+const songCatalog = new Map<string, Song>();
+
+function registerSongsInCatalog(songs: Song[]): void {
+  for (const song of songs) {
+    if (song?.id) {
+      songCatalog.set(song.id, song);
+    }
+  }
+}
+
+function findSongById(id?: string | null): Song | undefined {
+  if (!id) return undefined;
+  const fromCatalog = songCatalog.get(id);
+  if (fromCatalog) return fromCatalog;
+
+  const { recentPlays, likedSongs } = useListeningStore.getState();
+  return (
+    recentPlays.find((s) => s.id === id) ||
+    likedSongs.find((s) => s.id === id)
+  );
+}
 
 function registerPlaybackStateSync() {
   if (playbackListenerRegistered) return;
@@ -25,7 +50,16 @@ function registerPlaybackStateSync() {
     useCurrentSongStore.getState().setIsPlaying(playing);
     syncPlaybackWidget();
   });
-  TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, () => {
+  TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, (event) => {
+    const nextId = event.track?.id;
+    if (nextId) {
+      const matched = findSongById(nextId);
+      const currentId = useCurrentSongStore.getState().currentSong?.id;
+      if (matched && matched.id !== currentId) {
+        useCurrentSongStore.getState().setCurrentSong(matched);
+        useListeningStore.getState().recordPlay(matched);
+      }
+    }
     syncPlaybackWidget();
   });
 }
@@ -109,6 +143,83 @@ function pickAudioUrlByQuality(
   return urls[0]?.url || urls[urls.length - 1]?.url;
 }
 
+function toTrackItem(song: Song, quality: AudioQuality): AddTrack | null {
+  const url = pickAudioUrlByQuality(song.downloadUrl || [], quality);
+  if (!url) return null;
+  return {
+    id: song.id,
+    url,
+    title: song.name,
+    artist: getSongArtistName(song),
+    artwork: getSongArtwork(song),
+    duration: song.duration || undefined,
+  };
+}
+
+/**
+ * Fetches related songs for `seedSongId` and appends them to TrackPlayer's queue
+ * so Next/Previous controls work seamlessly even after playing a single search result.
+ */
+async function appendRelatedTracks(seedSongId: string): Promise<void> {
+  if (!seedSongId) return;
+  if (suggestionsInFlight?.songId === seedSongId) {
+    return suggestionsInFlight.promise;
+  }
+
+  const run = (async () => {
+    try {
+      const existingQueue = await TrackPlayer.getQueue().catch(() => []);
+      const existingIds = new Set(
+        existingQueue.map((t) => t.id).filter((id): id is string => Boolean(id)),
+      );
+      existingIds.add(seedSongId);
+
+      let candidates: Song[] = [];
+      try {
+        const res = await getSongSuggestions(seedSongId);
+        if (Array.isArray(res?.data)) {
+          candidates = res.data;
+        }
+      } catch (err) {
+        console.log('Suggestions fetch error:', err);
+      }
+
+      if (!candidates.length) {
+        const { likedSongs, recentPlays } = useListeningStore.getState();
+        candidates = [...likedSongs, ...recentPlays];
+      }
+
+      const uniqueSongs: Song[] = [];
+      for (const s of candidates) {
+        if (!s?.id || existingIds.has(s.id)) continue;
+        existingIds.add(s.id);
+        uniqueSongs.push(s);
+      }
+
+      if (!uniqueSongs.length) return;
+      registerSongsInCatalog(uniqueSongs);
+
+      const quality = useUserStore.getState().audioQuality;
+      const tracksToAdd = uniqueSongs
+        .map((s) => toTrackItem(s, quality))
+        .filter((t): t is AddTrack => t !== null);
+
+      if (tracksToAdd.length) {
+        await TrackPlayer.add(tracksToAdd);
+      }
+    } catch (err) {
+      console.log('appendRelatedTracks error:', err);
+    } finally {
+      if (suggestionsInFlight?.songId === seedSongId) {
+        suggestionsInFlight = null;
+      }
+    }
+  })();
+
+  suggestionsInFlight = { songId: seedSongId, promise: run };
+  return run;
+}
+
 export const playSong = async (song?: Song) => {
   const targetId = song?.id ?? useCurrentSongStore.getState().currentSong?.id;
   if (targetId && inFlightSongId === targetId) {
@@ -118,10 +229,12 @@ export const playSong = async (song?: Song) => {
 
   try {
     if (song) {
+      registerSongsInCatalog([song]);
       useCurrentSongStore.getState().setCurrentSong(song);
     }
     const currentSong = song || useCurrentSongStore.getState().currentSong;
     if (!currentSong) return;
+    registerSongsInCatalog([currentSong]);
     await initializePlayer();
 
     // If the selected song is already the active track in TrackPlayer, resume playback if paused
@@ -130,6 +243,10 @@ export const playSong = async (song?: Song) => {
       const playbackState = await TrackPlayer.getPlaybackState();
       if (playbackState.state !== State.Playing) {
         await TrackPlayer.play();
+      }
+      const queue = await TrackPlayer.getQueue().catch(() => []);
+      if (queue.length <= 1) {
+        appendRelatedTracks(currentSong.id).catch(() => {});
       }
       return;
     }
@@ -171,6 +288,7 @@ export const playSong = async (song?: Song) => {
 
       await TrackPlayer.play();
       useListeningStore.getState().recordPlay(currentSong);
+      appendRelatedTracks(currentSong.id).catch(() => {});
     } else {
       // Stop previous track so it does not keep playing in the background
       await TrackPlayer.stop();
@@ -190,6 +308,7 @@ export const playSong = async (song?: Song) => {
  * until the transition animation finishes so navigation stays responsive.
  */
 export const navigateAndPlaySong = (navigation: any, song: Song) => {
+  registerSongsInCatalog([song]);
   const parent = navigation.getParent?.();
   if (parent) {
     parent.navigate('Player', { song });
@@ -216,6 +335,7 @@ export const playQueueAndNavigate = (
   startIndex = 0,
 ) => {
   if (!songs.length) return;
+  registerSongsInCatalog(songs);
   const safeIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
   const targetSong = songs[safeIndex];
 
@@ -233,19 +353,8 @@ export const playQueueAndNavigate = (
         await initializePlayer();
         const quality = useUserStore.getState().audioQuality;
         const tracks = songs
-          .map((s) => {
-            const url = pickAudioUrlByQuality(s.downloadUrl || [], quality);
-            if (!url) return null;
-            return {
-              id: s.id,
-              url,
-              title: s.name,
-              artist: getSongArtistName(s),
-              artwork: getSongArtwork(s),
-              duration: s.duration || undefined,
-            };
-          })
-          .filter((t): t is NonNullable<typeof t> => t !== null);
+          .map((s) => toTrackItem(s, quality))
+          .filter((t): t is AddTrack => t !== null);
 
         if (!tracks.length) {
           await playSong(targetSong);
@@ -298,19 +407,43 @@ export const skipToNextSong = async () => {
   try {
     await initializePlayer();
     const isShuffle = useCurrentSongStore.getState().isShuffle;
-    if (isShuffle) {
-      const queue = await TrackPlayer.getQueue();
-      const activeIdx = await TrackPlayer.getActiveTrackIndex();
-      if (queue.length > 1) {
-        let nextIdx = Math.floor(Math.random() * queue.length);
-        if (nextIdx === activeIdx) {
-          nextIdx = (nextIdx + 1) % queue.length;
-        }
-        await TrackPlayer.skip(nextIdx);
-        return;
+    let queue = await TrackPlayer.getQueue();
+    let activeIdx = await TrackPlayer.getActiveTrackIndex();
+    const activeTrack = await TrackPlayer.getActiveTrack();
+
+    const needsMoreTracks =
+      queue.length <= 1 ||
+      activeIdx === undefined ||
+      activeIdx >= queue.length - 1;
+
+    if (needsMoreTracks) {
+      const seedId =
+        activeTrack?.id || useCurrentSongStore.getState().currentSong?.id;
+      if (seedId) {
+        await appendRelatedTracks(seedId);
+        queue = await TrackPlayer.getQueue();
+        activeIdx = await TrackPlayer.getActiveTrackIndex();
       }
     }
-    await TrackPlayer.skipToNext();
+
+    if (queue.length <= 1) return;
+
+    if (isShuffle) {
+      let nextIdx = Math.floor(Math.random() * queue.length);
+      if (nextIdx === activeIdx) {
+        nextIdx = (nextIdx + 1) % queue.length;
+      }
+      await TrackPlayer.skip(nextIdx);
+      await TrackPlayer.play();
+      syncPlaybackWidget();
+      return;
+    }
+
+    if (activeIdx !== undefined && activeIdx < queue.length - 1) {
+      await TrackPlayer.skipToNext();
+      await TrackPlayer.play();
+      syncPlaybackWidget();
+    }
   } catch (e) {
     console.log('Skip next error:', e);
   }
@@ -319,7 +452,34 @@ export const skipToNextSong = async () => {
 export const skipToPreviousSong = async () => {
   try {
     await initializePlayer();
-    await TrackPlayer.skipToPrevious();
+    const [queue, activeIdx, activeTrack, progress] = await Promise.all([
+      TrackPlayer.getQueue(),
+      TrackPlayer.getActiveTrackIndex(),
+      TrackPlayer.getActiveTrack(),
+      TrackPlayer.getProgress().catch(() => ({ position: 0, duration: 0 })),
+    ]);
+
+    if (progress.position > 4) {
+      await TrackPlayer.seekTo(0);
+      syncPlaybackWidget();
+      return;
+    }
+
+    if (activeIdx !== undefined && activeIdx > 0 && queue.length > 1) {
+      await TrackPlayer.skipToPrevious();
+      await TrackPlayer.play();
+      syncPlaybackWidget();
+      return;
+    }
+
+    const recentPlays = useListeningStore.getState().recentPlays;
+    const prevSong = recentPlays.find((s) => s.id && s.id !== activeTrack?.id);
+    if (prevSong) {
+      await playSong(prevSong);
+    } else {
+      await TrackPlayer.seekTo(0);
+    }
+    syncPlaybackWidget();
   } catch (e) {
     console.log('Skip prev error:', e);
   }
