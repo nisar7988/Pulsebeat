@@ -10,7 +10,7 @@ import {
 import { BlurView } from '@react-native-community/blur';
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   useActiveTrack,
@@ -35,14 +35,29 @@ export interface GlassMiniPlayerProps {
   fallbackSong?: Song;
 }
 
-export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
+const MiniPlayerProgressBar: React.FC = React.memo(() => {
+  const isFocused = useIsFocused();
+  const { position, duration } = useProgress(500);
+  const progressRatio =
+    isFocused && duration > 0
+      ? Math.min(Math.max(position / duration, 0), 1)
+      : 0;
+  const progressPercent = `${(progressRatio * 100).toFixed(1)}%` as `${number}%`;
+
+  return (
+    <View className="h-[2.5px] w-full bg-white/10 overflow-hidden">
+      <View className="h-full bg-accent" style={{ width: progressPercent }} />
+    </View>
+  );
+});
+
+export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   fallbackSong,
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const activeTrack = useActiveTrack();
   const { playing } = useIsPlaying();
-  const { position, duration } = useProgress(250);
   const currentSong = useCurrentSongStore((state) => state.currentSong);
 
   const activeOrFallbackSong = currentSong || fallbackSong;
@@ -59,10 +74,6 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
   const artwork =
     (activeTrack?.artwork as string) ||
     getSongArtwork(activeOrFallbackSong);
-
-  const progressRatio =
-    duration > 0 ? Math.min(Math.max(position / duration, 0), 1) : 0;
-  const progressPercent = `${(progressRatio * 100).toFixed(1)}%`;
 
   const handleTogglePlayback = async () => {
     try {
@@ -106,7 +117,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
           album: { id: '', name: '', url: '' },
           downloadUrl: [{ quality: '320kbps', url: activeTrack.url || '' }],
           copyright: '',
-          duration: duration || 0,
+          duration: activeTrack.duration || activeOrFallbackSong?.duration || 0,
           explicitContent: false,
           hasLyrics: false,
           label: '',
@@ -211,14 +222,9 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
       </View>
 
       {/* Slim Ambient Progress Line on bottom edge */}
-      <View className="h-[2.5px] w-full bg-white/10 overflow-hidden">
-        <View
-          className="h-full bg-accent"
-          style={{ width: progressPercent }}
-        />
-      </View>
+      <MiniPlayerProgressBar />
     </View>
   );
-};
+});
 
 export default GlassMiniPlayer;

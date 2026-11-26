@@ -13,7 +13,12 @@ const renderTabBar = (props: BottomTabBarProps) => <GlassTabBar {...props} />;
 const AppTabs = () => (
   <Tab.Navigator
     tabBar={renderTabBar}
-    screenOptions={{ headerShown: false, animation: 'shift' }}
+    screenOptions={{
+      headerShown: false,
+      animation: 'shift',
+      lazy: true,
+      freezeOnBlur: true,
+    }}
   >
     <Tab.Screen name="Home" component={HomeScreen} />
     <Tab.Screen name="Search" component={SearchScreen} />

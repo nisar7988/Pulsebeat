@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Image,
@@ -26,6 +26,11 @@ import { PlayerHeader, SongInfo, PlayerControls } from './components';
 import { useSongTheme } from '../../hooks/useSongTheme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 import { useListeningStore, useUserStore } from '../../store';
+import {
+  isDeviceLocked,
+  requestUnlockToLeavePlayer,
+  setShowPlayerOnLockScreen,
+} from '../../service/lockScreen';
 
 const { width: W } = Dimensions.get('window');
 const PANEL_H = 340;
@@ -57,24 +62,27 @@ const PlayerProgress: React.FC<PlayerProgressProps> = React.memo(({
   const currentRatio = duration > 0 ? position / duration : simulatedProgress;
   const progress = isSeeking && seekProgress !== null ? seekProgress : currentRatio;
 
-  const handleSeek = async (ratio: number) => {
-    setIsSeeking(false);
-    setSeekProgress(null);
-    try {
-      if (duration > 0) {
-        await seekTo(ratio * duration);
-      } else {
-        setSimulatedProgress(ratio);
+  const handleSeek = useCallback(
+    async (ratio: number) => {
+      setIsSeeking(false);
+      setSeekProgress(null);
+      try {
+        if (duration > 0) {
+          await seekTo(ratio * duration);
+        } else {
+          setSimulatedProgress(ratio);
+        }
+      } catch (e) {
+        console.log('Seek error:', e);
       }
-    } catch (e) {
-      console.log('Seek error:', e);
-    }
-  };
+    },
+    [duration],
+  );
 
-  const handleScrub = (ratio: number) => {
+  const handleScrub = useCallback((ratio: number) => {
     setIsSeeking(true);
     setSeekProgress(ratio);
-  };
+  }, []);
 
   return (
     <ProgressBar
@@ -113,6 +121,35 @@ const NowPlayingScreen = () => {
       setIsPlaying(playing);
     }
   }, [playing]);
+
+  // Allow PlayerScreen to appear over Android lock screen and require unlock to leave
+  useEffect(() => {
+    setShowPlayerOnLockScreen(true);
+    let bypassing = false;
+
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (bypassing) return;
+      e.preventDefault();
+
+      isDeviceLocked().then(async (locked) => {
+        if (!locked) {
+          bypassing = true;
+          navigation.dispatch(e.data.action);
+          return;
+        }
+        const unlocked = await requestUnlockToLeavePlayer();
+        if (unlocked) {
+          bypassing = true;
+          navigation.dispatch(e.data.action);
+        }
+      });
+    });
+
+    return () => {
+      unsubscribe();
+      setShowPlayerOnLockScreen(false);
+    };
+  }, [navigation]);
 
   // Ensure activeSong plays if TrackPlayer is not already playing this song
   useEffect(() => {

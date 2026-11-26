@@ -98,7 +98,7 @@ export const useListeningStore = create<ListeningStoreState>()(
         ].slice(0, 30);
 
         const prevEntry = playCounts[song.id];
-        const nextPlayCounts: Record<string, PlayCountEntry> = {
+        const mergedPlayCounts: Record<string, PlayCountEntry> = {
           ...playCounts,
           [song.id]: {
             song,
@@ -106,6 +106,15 @@ export const useListeningStore = create<ListeningStoreState>()(
             lastPlayedAt: Date.now(),
           },
         };
+        const entries = Object.entries(mergedPlayCounts);
+        const nextPlayCounts: Record<string, PlayCountEntry> =
+          entries.length > 60
+            ? Object.fromEntries(
+                entries
+                  .sort((a, b) => b[1].lastPlayedAt - a[1].lastPlayedAt)
+                  .slice(0, 60),
+              )
+            : mergedPlayCounts;
 
         const primaryArtist =
           song.artists?.primary?.[0]?.name ||

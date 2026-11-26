@@ -1,6 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
@@ -10,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import {
   getSongsByLanguage,
@@ -23,30 +24,31 @@ import {
 import { Song } from '../../types/song';
 import { useUserStore, useCurrentSongStore } from '../../store';
 import { navigateAndPlaySong } from '../../service/player';
+import { AppTabParamList } from '../../navigation/types';
+import { theme } from '../../theme';
+import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import {
   HomeHeader,
   SectionHeader,
-  HorizontalSongCard,
   ArtistAvatarChip,
+  HorizontalSongCard,
   SongCard,
-  GlassMiniPlayer,
 } from './components';
-import { theme } from '../../theme';
-import { AppTabParamList, RootStackParamList } from '../../navigation/types';
+
+const keyExtractorSong = (item: Song) => item.id;
+const keyExtractorArtist = (item: ApiArtist) => item.id;
 
 export default function HomeScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
-
-  // User preferences from Zustand store
   const { selectedLanguages, selectedGenres, selectedArtists } = useUserStore();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
 
   const userLanguages = useMemo(
-    () => (selectedLanguages.length > 0 ? selectedLanguages : ['english', 'hindi']),
+    () => (selectedLanguages.length > 0 ? selectedLanguages : ['English', 'Hindi']),
     [selectedLanguages],
   );
   const userGenres = useMemo(
-    () => (selectedGenres.length > 0 ? selectedGenres : ['pop', 'lofi', 'electronic']),
+    () => (selectedGenres.length > 0 ? selectedGenres : ['Pop', 'Lo-Fi', 'Electronic']),
     [selectedGenres],
   );
 
@@ -64,7 +66,11 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Unified method to play a song and navigate to Player screen
+  // In-memory caches to make switching tabs/pills instant
+  const languageCache = useRef<Map<string, Song[]>>(new Map());
+  const genreCache = useRef<Map<string, Song[]>>(new Map());
+  const artistCache = useRef<Map<string, Song[]>>(new Map());
+
   const handlePlaySong = useCallback(
     (song: Song) => {
       navigateAndPlaySong(navigation, song);
@@ -92,66 +98,125 @@ export default function HomeScreen() {
     };
   }, [userLanguages]);
 
-  // Load content based on active selections
-  const loadHomeContent = useCallback(async () => {
+  const fetchLanguageSongs = useCallback(async (lang: string, bypassCache = false) => {
+    if (!bypassCache && languageCache.current.has(lang)) {
+      setTrendingSongs(languageCache.current.get(lang)!);
+      setIsLoading(false);
+      return;
+    }
     try {
-      const [langRes, genreRes] = await Promise.allSettled([
-        getSongsByLanguage(activeLanguage),
-        getSongsByGenre(activeGenre),
-      ]);
-
-      if (langRes.status === 'fulfilled') {
-        setTrendingSongs(langRes.value?.data?.results ?? []);
-      }
-      if (genreRes.status === 'fulfilled') {
-        setGenreSongs(genreRes.value?.data?.results ?? []);
-      }
-
-      // Fetch artist songs (support ID or name)
-      if (activeArtist) {
-        const isNumericId = /^\d+$/.test(activeArtist);
-        const artistRes = isNumericId
-          ? await getArtistSongs(activeArtist)
-          : await getSongBySearch(activeArtist);
-
-        const songs = artistRes?.data?.songs || artistRes?.data?.results || [];
-        setArtistSongs(songs.slice(0, 8));
-      }
-    } catch (error) {
-      console.log('Error loading personalized home feed:', error);
+      const res = await getSongsByLanguage(lang);
+      const songs: Song[] = res?.data?.results ?? [];
+      languageCache.current.set(lang, songs);
+      setTrendingSongs(songs);
+    } catch (e) {
+      console.log('Error loading trending songs:', e);
     } finally {
       setIsLoading(false);
-      setRefreshing(false);
     }
-  }, [activeLanguage, activeGenre, activeArtist]);
+  }, []);
+
+  const fetchGenreSongs = useCallback(async (genre: string, bypassCache = false) => {
+    if (!bypassCache && genreCache.current.has(genre)) {
+      setGenreSongs(genreCache.current.get(genre)!);
+      return;
+    }
+    try {
+      const res = await getSongsByGenre(genre);
+      const songs: Song[] = res?.data?.results ?? [];
+      genreCache.current.set(genre, songs);
+      setGenreSongs(songs);
+    } catch (e) {
+      console.log('Error loading genre songs:', e);
+    }
+  }, []);
+
+  const fetchArtistSongs = useCallback(async (artist: string, bypassCache = false) => {
+    if (!artist) return;
+    if (!bypassCache && artistCache.current.has(artist)) {
+      setArtistSongs(artistCache.current.get(artist)!);
+      return;
+    }
+    try {
+      const isNumericId = /^\d+$/.test(artist);
+      const res = isNumericId
+        ? await getArtistSongs(artist)
+        : await getSongBySearch(artist);
+      const songs: Song[] = (res?.data?.songs || res?.data?.results || []).slice(0, 8);
+      artistCache.current.set(artist, songs);
+      setArtistSongs(songs);
+    } catch (e) {
+      console.log('Error loading artist songs:', e);
+    }
+  }, []);
 
   useEffect(() => {
-    loadHomeContent();
-  }, [loadHomeContent]);
+    fetchLanguageSongs(activeLanguage);
+  }, [activeLanguage, fetchLanguageSongs]);
 
-  const onRefresh = () => {
+  useEffect(() => {
+    fetchGenreSongs(activeGenre);
+  }, [activeGenre, fetchGenreSongs]);
+
+  useEffect(() => {
+    fetchArtistSongs(activeArtist);
+  }, [activeArtist, fetchArtistSongs]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    loadHomeContent();
-  };
+    await Promise.allSettled([
+      fetchLanguageSongs(activeLanguage, true),
+      fetchGenreSongs(activeGenre, true),
+      fetchArtistSongs(activeArtist, true),
+    ]);
+    setRefreshing(false);
+  }, [
+    activeArtist,
+    activeGenre,
+    activeLanguage,
+    fetchArtistSongs,
+    fetchGenreSongs,
+    fetchLanguageSongs,
+  ]);
 
-  return (
-    <SafeAreaView className="flex-1" edges={['top']}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerClassName="pb-48"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.accent.DEFAULT}
-          />
-        }
-      >
-        {/* Header with Greeting & Language Switcher */}
+  const renderHorizontalSong = useCallback(
+    ({ item }: { item: Song }) => (
+      <HorizontalSongCard song={item} onPlay={handlePlaySong} />
+    ),
+    [handlePlaySong],
+  );
+
+  const renderTrendingSong = useCallback(
+    ({ item }: { item: Song }) => (
+      <SongCard song={item} onPlay={handlePlaySong} />
+    ),
+    [handlePlaySong],
+  );
+
+  const renderArtistChip = useCallback(
+    ({ item }: { item: ApiArtist }) => {
+      const isSelected =
+        item.name.toLowerCase() === activeArtist.toLowerCase() ||
+        item.id === activeArtist;
+      return (
+        <ArtistAvatarChip
+          name={item.name}
+          avatar={item.avatar}
+          isSelected={isSelected}
+          onPress={() => setActiveArtist(item.name || item.id)}
+        />
+      );
+    },
+    [activeArtist],
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <>
         <HomeHeader
           languages={userLanguages}
           activeLanguage={activeLanguage}
-          onSelectLanguage={(lang) => setActiveLanguage(lang)}
+          onSelectLanguage={setActiveLanguage}
           onOpenSearch={() => navigation.navigate('Search')}
         />
 
@@ -164,7 +229,6 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
-            {/* 1. Favorite Artists Row */}
             {artistList.length > 0 && (
               <View className="pt-2">
                 <SectionHeader
@@ -172,30 +236,21 @@ export default function HomeScreen() {
                   title="Artists You Love"
                   subtitle="Tap an artist to explore their catalog"
                 />
-                <ScrollView
+                <FlatList
                   horizontal
+                  data={artistList}
+                  keyExtractor={keyExtractorArtist}
+                  renderItem={renderArtistChip}
                   showsHorizontalScrollIndicator={false}
                   contentContainerClassName="px-5 py-2"
-                >
-                  {artistList.map((artist) => {
-                    const isSelected =
-                      artist.name.toLowerCase() === activeArtist.toLowerCase() ||
-                      artist.id === activeArtist;
-                    return (
-                      <ArtistAvatarChip
-                        key={artist.id}
-                        name={artist.name}
-                        avatar={artist.avatar}
-                        isSelected={isSelected}
-                        onPress={() => setActiveArtist(artist.name || artist.id)}
-                      />
-                    );
-                  })}
-                </ScrollView>
+                  initialNumToRender={5}
+                  maxToRenderPerBatch={5}
+                  windowSize={3}
+                  removeClippedSubviews={Platform.OS === 'android'}
+                />
               </View>
             )}
 
-            {/* 2. Spotlight on Selected Artist */}
             {artistSongs.length > 0 && (
               <View className="pt-2">
                 <SectionHeader
@@ -203,23 +258,21 @@ export default function HomeScreen() {
                   title={`Featuring ${activeArtist}`}
                   subtitle="Top tracks from your chosen artist"
                 />
-                <ScrollView
+                <FlatList
                   horizontal
+                  data={artistSongs}
+                  keyExtractor={keyExtractorSong}
+                  renderItem={renderHorizontalSong}
                   showsHorizontalScrollIndicator={false}
                   contentContainerClassName="px-5 py-2"
-                >
-                  {artistSongs.map((song) => (
-                    <HorizontalSongCard
-                      key={song.id}
-                      song={song}
-                      onPlay={handlePlaySong}
-                    />
-                  ))}
-                </ScrollView>
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={4}
+                  windowSize={3}
+                  removeClippedSubviews={Platform.OS === 'android'}
+                />
               </View>
             )}
 
-            {/* 3. Your Vibe / Selected Genres Carousel */}
             <View className="pt-2">
               <SectionHeader
                 badge="YOUR VIBE"
@@ -227,7 +280,6 @@ export default function HomeScreen() {
                 subtitle="Genres based on your onboarding selections"
               />
 
-              {/* Genre Selector Pills */}
               {userGenres.length > 1 && (
                 <ScrollView
                   horizontal
@@ -263,44 +315,70 @@ export default function HomeScreen() {
                 </ScrollView>
               )}
 
-              {/* Genre Songs Horizontal List */}
-              <ScrollView
+              <FlatList
                 horizontal
+                data={genreSongs}
+                keyExtractor={keyExtractorSong}
+                renderItem={renderHorizontalSong}
                 showsHorizontalScrollIndicator={false}
                 contentContainerClassName="px-5 py-2 mt-1"
-              >
-                {genreSongs.map((song) => (
-                  <HorizontalSongCard
-                    key={song.id}
-                    song={song}
-                    onPlay={handlePlaySong}
-                  />
-                ))}
-              </ScrollView>
+                initialNumToRender={4}
+                maxToRenderPerBatch={4}
+                windowSize={3}
+                removeClippedSubviews={Platform.OS === 'android'}
+              />
             </View>
 
-            {/* 4. Trending in Selected Language */}
-            <View className="pt-2">
+            <View className="pt-2 pb-1">
               <SectionHeader
                 badge="TRENDING NOW"
                 title={`Top Hits in ${activeLanguage}`}
                 subtitle="Popular releases updated daily"
               />
-              <View className="pt-1">
-                {trendingSongs.map((song) => (
-                  <SongCard
-                    key={song.id}
-                    song={song}
-                    onPlay={handlePlaySong}
-                  />
-                ))}
-              </View>
             </View>
           </>
         )}
-      </ScrollView>
+      </>
+    ),
+    [
+      activeArtist,
+      activeGenre,
+      activeLanguage,
+      artistList,
+      artistSongs,
+      genreSongs,
+      isLoading,
+      navigation,
+      refreshing,
+      renderArtistChip,
+      renderHorizontalSong,
+      userGenres,
+      userLanguages,
+    ],
+  );
 
-      {/* Floating Glass Mini Player */}
+  return (
+    <SafeAreaView className="flex-1" edges={['top']}>
+      <FlatList
+        data={isLoading && !refreshing ? [] : trendingSongs}
+        keyExtractor={keyExtractorSong}
+        renderItem={renderTrendingSong}
+        ListHeaderComponent={listHeader}
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="pb-48"
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.accent.DEFAULT}
+          />
+        }
+      />
+
       <GlassMiniPlayer fallbackSong={currentSong || trendingSongs[0] || genreSongs[0]} />
     </SafeAreaView>
   );

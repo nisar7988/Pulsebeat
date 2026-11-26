@@ -3,6 +3,7 @@ import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
 import { useUserStore, AudioQuality } from '../store/useUserStore';
 import { useListeningStore } from '../store/useListeningStore';
+import { syncPlaybackWidget } from './widgetSync';
 
 let isPlayerInitialized = false;
 let isInitializing = false;
@@ -16,6 +17,10 @@ function registerPlaybackStateSync() {
     const playing =
       event.state === State.Playing || event.state === State.Buffering;
     useCurrentSongStore.getState().setIsPlaying(playing);
+    syncPlaybackWidget();
+  });
+  TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, () => {
+    syncPlaybackWidget();
   });
 }
 

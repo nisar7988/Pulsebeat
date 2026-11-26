@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">PulseBeat</string>
+    <string name="widget_pulsebeat_player_description">Liquid glass music player with playback controls</string>
 </resources>

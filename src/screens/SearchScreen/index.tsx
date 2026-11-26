@@ -249,6 +249,10 @@ const SearchScreen = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          initialNumToRender={8}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListHeaderComponent={
             <>
               {/* Header Title & Compass Icon */}

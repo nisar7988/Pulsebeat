@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Dimensions,
@@ -118,11 +118,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
     [CX, CY, PHI]
   );
 
+  const onSeekRef = useRef(onSeek);
+  const onScrubRef = useRef(onScrub);
+  onSeekRef.current = onSeek;
+  onScrubRef.current = onScrub;
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: (evt) => {
-          if (!onSeek && !onScrub) return false;
+          if (!onSeekRef.current && !onScrubRef.current) return false;
           const { locationX, locationY } = evt.nativeEvent;
           const dx = locationX - CX;
           const dy = CY - locationY;
@@ -131,7 +136,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           return Math.abs(dist - R) <= 28;
         },
         onMoveShouldSetPanResponder: (evt) => {
-          if (!onSeek && !onScrub) return false;
+          if (!onSeekRef.current && !onScrubRef.current) return false;
           const { locationX, locationY } = evt.nativeEvent;
           const dx = locationX - CX;
           const dy = CY - locationY;
@@ -141,20 +146,20 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         onPanResponderGrant: (evt) => {
           const { locationX, locationY } = evt.nativeEvent;
           const p = getProgressFromCoords(locationX, locationY);
-          onScrub?.(p);
+          onScrubRef.current?.(p);
         },
         onPanResponderMove: (evt) => {
           const { locationX, locationY } = evt.nativeEvent;
           const p = getProgressFromCoords(locationX, locationY);
-          onScrub?.(p);
+          onScrubRef.current?.(p);
         },
         onPanResponderRelease: (evt) => {
           const { locationX, locationY } = evt.nativeEvent;
           const p = getProgressFromCoords(locationX, locationY);
-          onSeek?.(p);
+          onSeekRef.current?.(p);
         },
       }),
-    [onSeek, onScrub, R, CX, CY, getProgressFromCoords]
+    [R, CX, CY, getProgressFromCoords]
   );
 
   return (
