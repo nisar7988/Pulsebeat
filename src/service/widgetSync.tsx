@@ -19,6 +19,8 @@ export function buildPulseBeatWidgetElement(
   widgetInfo: Pick<WidgetInfo, 'width' | 'height'>,
   snapshot: WidgetPlaybackSnapshot,
 ) {
+  const safeWidth = widgetInfo.width > 0 ? widgetInfo.width : 330;
+  const safeHeight = widgetInfo.height > 0 ? widgetInfo.height : 195;
   return (
     <PulseBeatWidget
       title={snapshot.title}
@@ -31,8 +33,8 @@ export function buildPulseBeatWidgetElement(
       isShuffle={snapshot.isShuffle}
       isRepeat={snapshot.isRepeat}
       theme={snapshot.theme}
-      width={widgetInfo.width}
-      height={widgetInfo.height}
+      width={safeWidth}
+      height={safeHeight}
     />
   );
 }

@@ -477,7 +477,7 @@ export const OnboardingScreen = () => {
             activeOpacity={0.85}
             disabled={!stepMeta.canContinue}
             onPress={handleNext}
-            className={`flex-1 h-13 rounded-full overflow-hidden items-center justify-center relative shadow-md shadow-accent/40 ${
+            className={`flex-1 h-15 rounded-full overflow-hidden items-center justify-center relative shadow-md shadow-accent/40 ${
               !stepMeta.canContinue ? 'opacity-50' : ''
             }`}
           >

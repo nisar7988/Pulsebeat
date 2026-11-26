@@ -44,10 +44,11 @@ function buildLiquidGlassBgSvg(
   w: number,
   h: number,
   theme: WidgetThemeColors,
+  radius: number,
 ): string {
-  const safeW = Math.max(Math.round(w), 240);
-  const safeH = Math.max(Math.round(h), 120);
-  const r = 26;
+  const safeW = Math.max(Math.round(w), 160);
+  const safeH = Math.max(Math.round(h), 72);
+  const r = Math.min(radius, Math.floor(safeH / 2) - 2);
 
   return `
 <svg width="${safeW}" height="${safeH}" viewBox="0 0 ${safeW} ${safeH}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -319,15 +320,44 @@ export function PulseBeatWidget({
   width = 330,
   height = 195,
 }: PulseBeatWidgetProps) {
-  const isCompact = height < 130;
+  const safeW = width > 0 ? width : 330;
+  const safeH = height > 0 ? height : 195;
+
+  // 3 responsive tiers so 4x1, tight 4x2 (OnePlus/Pixel), and tall 4x2/4x3 (Samsung/expanded) never clip
+  const isCompact = safeH < 132;
+  const isMedium = !isCompact && safeH < 192;
+  const isTightMedium = isMedium && safeH < 156;
+  const isNarrow = safeW < 255;
+
+  const cardRadius = isCompact ? Math.min(22, Math.round(safeH * 0.24)) : isMedium ? 22 : 26;
+  const padH = isCompact ? 12 : isNarrow ? 12 : isMedium ? 14 : 18;
+  const padV = isCompact ? 8 : isTightMedium ? 8 : isMedium ? 11 : 15;
+
   const artworkSource: ImageWidgetSource = artwork || DEFAULT_ARTWORK;
-  const glassSvg = buildLiquidGlassBgSvg(width, height, theme);
+  const glassSvg = buildLiquidGlassBgSvg(safeW, safeH, theme, cardRadius);
   const ratio = duration > 0 ? position / duration : 0;
-  const barWidth = Math.max(width - 36, 160);
+  const barWidth = Math.max(safeW - padH * 2, 140);
   const progressSvg = buildProgressBarSvg(barWidth, ratio, theme);
   const playPauseSvg = isPlaying
     ? buildPauseSvg(theme.onAccent)
     : buildPlaySvg(theme.onAccent);
+
+  // Adaptive element sizes per tier
+  const compactArtSize = Math.min(48, Math.max(36, Math.round(safeH - 22)));
+  const artSize = isTightMedium ? 42 : isMedium ? 48 : 60;
+  const artRadius = isMedium ? 12 : 15;
+
+  const seekRowHeight = isMedium ? 16 : 22;
+  const seekSvgHeight = isMedium ? 12 : 14;
+  const timeFontSize = isTightMedium ? 10 : 11;
+
+  const playBtnSize = isTightMedium ? 40 : isMedium ? 46 : isNarrow ? 50 : 58;
+  const playIconSize = isTightMedium ? 19 : isMedium ? 21 : 24;
+  const skipBtnSize = isTightMedium ? 34 : isMedium ? 38 : isNarrow ? 40 : 46;
+  const skipIconSize = isTightMedium ? 17 : isMedium ? 18 : 20;
+  const modeBtnSize = isTightMedium ? 28 : isMedium ? 32 : isNarrow ? 34 : 38;
+  const modeIconSize = isTightMedium ? 14 : isMedium ? 15 : 17;
+  const showSideModes = safeW >= 235;
 
   return (
     <OverlapWidget
@@ -335,7 +365,7 @@ export function PulseBeatWidget({
       style={{
         height: 'match_parent',
         width: 'match_parent',
-        borderRadius: 26,
+        borderRadius: cardRadius,
       }}
     >
       <SvgWidget
@@ -354,8 +384,8 @@ export function PulseBeatWidget({
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingHorizontal: 14,
-            paddingVertical: 10,
+            paddingHorizontal: padH,
+            paddingVertical: padV,
           }}
         >
           <FlexWidget
@@ -368,9 +398,9 @@ export function PulseBeatWidget({
           >
             <FlexWidget
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
+                width: compactArtSize,
+                height: compactArtSize,
+                borderRadius: 11,
                 borderWidth: 1.5,
                 borderColor: hexToRgba(theme.artBorder, 0.6) as ColorProp,
                 backgroundColor: 'rgba(16, 28, 13, 0.8)',
@@ -380,9 +410,9 @@ export function PulseBeatWidget({
             >
               <ImageWidget
                 image={artworkSource}
-                imageWidth={45}
-                imageHeight={45}
-                radius={11}
+                imageWidth={compactArtSize - 3}
+                imageHeight={compactArtSize - 3}
+                radius={10}
                 resizeMode="cover"
               />
             </FlexWidget>
@@ -398,7 +428,7 @@ export function PulseBeatWidget({
                 text={title}
                 maxLines={1}
                 style={{
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 'bold',
                   color: '#FFFFFF',
                 }}
@@ -407,7 +437,7 @@ export function PulseBeatWidget({
                 text={artist}
                 maxLines={1}
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   color: 'rgba(255, 255, 255, 0.72)',
                   marginTop: 2,
                 }}
@@ -421,21 +451,33 @@ export function PulseBeatWidget({
               alignItems: 'center',
             }}
           >
+            {safeW >= 285 && (
+              <>
+                <GlassControlButton
+                  clickAction="PREVIOUS"
+                  svg={PREV_ICON_SVG}
+                  theme={theme}
+                  size={34}
+                  iconSize={16}
+                />
+                <FlexWidget style={{ width: 6 }} />
+              </>
+            )}
             <GlassControlButton
               clickAction="PLAY_PAUSE"
               svg={playPauseSvg}
               theme={theme}
               primary
-              size={42}
-              iconSize={20}
+              size={Math.min(42, Math.max(34, safeH - 28))}
+              iconSize={18}
             />
-            <FlexWidget style={{ width: 8 }} />
+            <FlexWidget style={{ width: 6 }} />
             <GlassControlButton
               clickAction="NEXT"
               svg={NEXT_ICON_SVG}
               theme={theme}
-              size={38}
-              iconSize={18}
+              size={34}
+              iconSize={16}
             />
           </FlexWidget>
         </FlexWidget>
@@ -446,8 +488,8 @@ export function PulseBeatWidget({
             width: 'match_parent',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            paddingHorizontal: 18,
-            paddingVertical: 15,
+            paddingHorizontal: padH,
+            paddingVertical: padV,
           }}
         >
           {/* Top Row: Artwork + Song Info + Brand Icon */}
@@ -455,14 +497,14 @@ export function PulseBeatWidget({
             style={{
               width: 'match_parent',
               flexDirection: 'row',
-              alignItems: 'flex-start',
+              alignItems: isMedium ? 'center' : 'flex-start',
             }}
           >
             <FlexWidget
               style={{
-                width: 60,
-                height: 60,
-                borderRadius: 15,
+                width: artSize,
+                height: artSize,
+                borderRadius: artRadius,
                 borderWidth: 1.5,
                 borderColor: hexToRgba(theme.artBorder, 0.6) as ColorProp,
                 backgroundColor: 'rgba(16, 28, 13, 0.85)',
@@ -472,9 +514,9 @@ export function PulseBeatWidget({
             >
               <ImageWidget
                 image={artworkSource}
-                imageWidth={57}
-                imageHeight={57}
-                radius={14}
+                imageWidth={artSize - 3}
+                imageHeight={artSize - 3}
+                radius={artRadius - 1}
                 resizeMode="cover"
               />
             </FlexWidget>
@@ -482,48 +524,50 @@ export function PulseBeatWidget({
             <FlexWidget
               style={{
                 flex: 1,
-                marginLeft: 13,
+                marginLeft: isMedium ? 11 : 13,
                 justifyContent: 'center',
               }}
             >
-              <FlexWidget
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginBottom: 3,
-                }}
-              >
-                <SvgWidget
-                  svg={buildEqualizerSvg(theme)}
+              {!isTightMedium && (
+                <FlexWidget
                   style={{
-                    width: 14,
-                    height: 12,
-                    marginRight: 6,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: isMedium ? 1 : 3,
                   }}
-                />
-                <TextWidget
-                  text={
-                    isPlaying
-                      ? 'Now Playing'
-                      : hasSong
-                      ? 'Paused'
-                      : 'PulseBeat'
-                  }
-                  style={{
-                    fontSize: 12,
-                    fontWeight: '600',
-                    color: (isPlaying
-                      ? theme.labelAccent
-                      : 'rgba(255, 255, 255, 0.65)') as ColorProp,
-                  }}
-                />
-              </FlexWidget>
+                >
+                  <SvgWidget
+                    svg={buildEqualizerSvg(theme)}
+                    style={{
+                      width: 13,
+                      height: 11,
+                      marginRight: 5,
+                    }}
+                  />
+                  <TextWidget
+                    text={
+                      isPlaying
+                        ? 'Now Playing'
+                        : hasSong
+                        ? 'Paused'
+                        : 'PulseBeat'
+                    }
+                    style={{
+                      fontSize: isMedium ? 11 : 12,
+                      fontWeight: '600',
+                      color: (isPlaying
+                        ? theme.labelAccent
+                        : 'rgba(255, 255, 255, 0.65)') as ColorProp,
+                    }}
+                  />
+                </FlexWidget>
+              )}
 
               <TextWidget
                 text={title}
                 maxLines={1}
                 style={{
-                  fontSize: 18,
+                  fontSize: isTightMedium ? 14 : isMedium ? 15 : 18,
                   fontWeight: 'bold',
                   color: '#FFFFFF',
                 }}
@@ -532,9 +576,9 @@ export function PulseBeatWidget({
                 text={artist}
                 maxLines={1}
                 style={{
-                  fontSize: 13,
+                  fontSize: isTightMedium ? 11.5 : isMedium ? 12 : 13,
                   color: 'rgba(255, 255, 255, 0.72)',
-                  marginTop: 2,
+                  marginTop: isMedium ? 1 : 2,
                 }}
               />
             </FlexWidget>
@@ -542,8 +586,8 @@ export function PulseBeatWidget({
             <SvgWidget
               svg={buildPulseBeatLogoSvg(theme)}
               style={{
-                width: 28,
-                height: 28,
+                width: isMedium ? 24 : 28,
+                height: isMedium ? 24 : 28,
                 marginLeft: 8,
               }}
             />
@@ -559,13 +603,13 @@ export function PulseBeatWidget({
             <OverlapWidget
               style={{
                 width: 'match_parent',
-                height: 22,
+                height: seekRowHeight,
               }}
             >
               <FlexWidget
                 style={{
                   width: 'match_parent',
-                  height: 22,
+                  height: seekRowHeight,
                   justifyContent: 'center',
                 }}
               >
@@ -573,14 +617,14 @@ export function PulseBeatWidget({
                   svg={progressSvg}
                   style={{
                     width: 'match_parent',
-                    height: 14,
+                    height: seekSvgHeight,
                   }}
                 />
               </FlexWidget>
               <FlexWidget
                 style={{
                   width: 'match_parent',
-                  height: 22,
+                  height: seekRowHeight,
                   flexDirection: 'row',
                 }}
               >
@@ -591,7 +635,7 @@ export function PulseBeatWidget({
                     clickActionData={{ ratio: segRatio }}
                     style={{
                       flex: 1,
-                      height: 22,
+                      height: seekRowHeight,
                     }}
                   />
                 ))}
@@ -608,67 +652,71 @@ export function PulseBeatWidget({
               <TextWidget
                 text={formatTime(position)}
                 style={{
-                  fontSize: 11,
+                  fontSize: timeFontSize,
                   color: 'rgba(255, 255, 255, 0.65)',
                 }}
               />
               <TextWidget
                 text={formatTime(duration)}
                 style={{
-                  fontSize: 11,
+                  fontSize: timeFontSize,
                   color: 'rgba(255, 255, 255, 0.65)',
                 }}
               />
             </FlexWidget>
           </FlexWidget>
 
-          {/* Bottom Row: 5-Button Symmetrical Control Bar */}
+          {/* Bottom Row: Symmetrical Control Bar */}
           <FlexWidget
             style={{
               width: 'match_parent',
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              justifyContent: showSideModes ? 'space-between' : 'space-around',
             }}
           >
-            <GlassControlButton
-              clickAction="SHUFFLE"
-              svg={buildShuffleSvg(isShuffle, theme.labelAccent)}
-              theme={theme}
-              active={isShuffle}
-              size={38}
-              iconSize={17}
-            />
+            {showSideModes && (
+              <GlassControlButton
+                clickAction="SHUFFLE"
+                svg={buildShuffleSvg(isShuffle, theme.labelAccent)}
+                theme={theme}
+                active={isShuffle}
+                size={modeBtnSize}
+                iconSize={modeIconSize}
+              />
+            )}
             <GlassControlButton
               clickAction="PREVIOUS"
               svg={PREV_ICON_SVG}
               theme={theme}
-              size={46}
-              iconSize={20}
+              size={skipBtnSize}
+              iconSize={skipIconSize}
             />
             <GlassControlButton
               clickAction="PLAY_PAUSE"
               svg={playPauseSvg}
               theme={theme}
               primary
-              size={58}
-              iconSize={24}
+              size={playBtnSize}
+              iconSize={playIconSize}
             />
             <GlassControlButton
               clickAction="NEXT"
               svg={NEXT_ICON_SVG}
               theme={theme}
-              size={46}
-              iconSize={20}
+              size={skipBtnSize}
+              iconSize={skipIconSize}
             />
-            <GlassControlButton
-              clickAction="REPEAT"
-              svg={buildRepeatSvg(isRepeat, theme.labelAccent)}
-              theme={theme}
-              active={isRepeat}
-              size={38}
-              iconSize={17}
-            />
+            {showSideModes && (
+              <GlassControlButton
+                clickAction="REPEAT"
+                svg={buildRepeatSvg(isRepeat, theme.labelAccent)}
+                theme={theme}
+                active={isRepeat}
+                size={modeBtnSize}
+                iconSize={modeIconSize}
+              />
+            )}
           </FlexWidget>
         </FlexWidget>
       )}
