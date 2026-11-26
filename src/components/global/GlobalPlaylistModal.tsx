@@ -6,6 +6,7 @@ export default function GlobalPlaylistModal() {
   const visible = useListeningStore((state) => state.playlistModalVisible);
   const songToAdd = useListeningStore((state) => state.playlistModalSong);
   const playlists = useListeningStore((state) => state.playlists);
+  const likedSongs = useListeningStore((state) => state.likedSongs);
   const closePlaylistModal = useListeningStore(
     (state) => state.closePlaylistModal,
   );
@@ -13,15 +14,18 @@ export default function GlobalPlaylistModal() {
   const addSongToPlaylist = useListeningStore(
     (state) => state.addSongToPlaylist,
   );
+  const toggleLikeSong = useListeningStore((state) => state.toggleLikeSong);
 
   return (
     <PlaylistModal
       visible={visible}
       songToAdd={songToAdd}
       playlists={playlists}
+      likedSongs={likedSongs}
       onClose={closePlaylistModal}
       onCreatePlaylist={(name, song) => createPlaylist(name, song || undefined)}
       onSelectPlaylist={(playlistId, song) => addSongToPlaylist(playlistId, song)}
+      onToggleLikeSong={toggleLikeSong}
     />
   );
 }

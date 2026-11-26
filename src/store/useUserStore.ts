@@ -106,12 +106,20 @@ function dedupeNormalized(values: string[], normalizer: (v: string) => string): 
   return out;
 }
 
+export interface SavedArtistProfile {
+  id: string;
+  name: string;
+  avatar: string;
+  role?: string;
+}
+
 export interface UserPreferencesState {
   hasCompletedOnboarding: boolean;
   selectedLanguages: string[];
   selectedGenres: string[];
   selectedArtists: string[];
   artistNames: Record<string, string>;
+  artistProfiles: Record<string, SavedArtistProfile>;
   profileName: string;
   profileHandle: string;
   avatarId: string;
@@ -125,7 +133,10 @@ export interface UserPreferencesState {
   setLanguages: (languages: string[]) => void;
   toggleGenre: (genre: string) => void;
   setGenres: (genres: string[]) => void;
-  toggleArtist: (artistId: string, artistName?: string) => void;
+  toggleArtist: (
+    artistId: string,
+    artistMeta?: string | { name: string; avatar?: string; role?: string },
+  ) => void;
   setArtists: (artists: string[]) => void;
   updateProfile: (profile: {
     profileName?: string;
@@ -148,6 +159,7 @@ export const useUserStore = create<UserPreferencesState>()(
       selectedGenres: [],
       selectedArtists: [],
       artistNames: { ...DEFAULT_ARTIST_NAMES },
+      artistProfiles: {},
       profileName: 'PulseBeat Listener',
       profileHandle: '@pulsebeat',
       avatarId: 'neon-disc',
@@ -197,17 +209,41 @@ export const useUserStore = create<UserPreferencesState>()(
       setGenres: (genres: string[]) =>
         set({ selectedGenres: dedupeNormalized(genres, normalizeGenreName) }),
 
-      toggleArtist: (artistId: string, artistName?: string) => {
-        const { selectedArtists, artistNames } = get();
+      toggleArtist: (
+        artistId: string,
+        artistMeta?: string | { name: string; avatar?: string; role?: string },
+      ) => {
+        const { selectedArtists, artistNames, artistProfiles } = get();
         const exists = selectedArtists.includes(artistId);
-        const nextNames = artistName
-          ? { ...artistNames, [artistId]: artistName }
+        const metaName =
+          typeof artistMeta === 'string' ? artistMeta : artistMeta?.name;
+        const metaAvatar =
+          typeof artistMeta === 'object' ? artistMeta?.avatar : undefined;
+        const metaRole =
+          typeof artistMeta === 'object' ? artistMeta?.role : undefined;
+
+        const nextNames = metaName
+          ? { ...artistNames, [artistId]: metaName }
           : artistNames;
+        const nextProfiles =
+          metaName && metaAvatar
+            ? {
+                ...artistProfiles,
+                [artistId]: {
+                  id: artistId,
+                  name: metaName,
+                  avatar: metaAvatar,
+                  role: metaRole,
+                },
+              }
+            : artistProfiles;
+
         set({
           selectedArtists: exists
             ? selectedArtists.filter((a) => a !== artistId)
             : [...selectedArtists, artistId],
           artistNames: nextNames,
+          artistProfiles: nextProfiles,
         });
       },
 
@@ -235,6 +271,7 @@ export const useUserStore = create<UserPreferencesState>()(
           selectedLanguages: ['English'],
           selectedGenres: [],
           selectedArtists: [],
+          artistProfiles: {},
         }),
 
       setHasHydrated: (hydrated: boolean) => set({ _hasHydrated: hydrated }),

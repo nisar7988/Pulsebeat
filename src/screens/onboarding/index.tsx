@@ -401,7 +401,13 @@ export const OnboardingScreen = () => {
                     return (
                       <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => toggleArtist(item.id, item.name)}
+                        onPress={() =>
+                          toggleArtist(item.id, {
+                            name: item.name,
+                            avatar: item.avatar,
+                            role: item.role || item.genre,
+                          })
+                        }
                         className={`flex-1 p-2.5 rounded-2xl border items-center overflow-hidden relative ${
                           selected
                             ? 'border-accent bg-accent/25'

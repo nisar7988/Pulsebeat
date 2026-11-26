@@ -35,6 +35,7 @@ import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 
 export interface GlassMiniPlayerProps {
   fallbackSong?: Song;
+  bottomOffsetClass?: string;
 }
 
 const MiniPlayerProgressBar: React.FC = React.memo(() => {
@@ -55,6 +56,7 @@ const MiniPlayerProgressBar: React.FC = React.memo(() => {
 
 export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   fallbackSong,
+  bottomOffsetClass = 'bottom-[92px]',
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -153,7 +155,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   };
 
   return (
-    <View className="absolute bottom-[92px] left-4 right-4 z-30 overflow-hidden rounded-2xl border border-glass-border">
+    <View className={`absolute ${bottomOffsetClass} left-4 right-4 z-30 overflow-hidden rounded-2xl border border-glass-border`}>
       {/* Glass Frost Background */}
       {Platform.OS === 'ios' ? (
         <BlurView

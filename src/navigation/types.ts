@@ -12,4 +12,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   MainTabs: NavigatorScreenParams<AppTabParamList> | undefined;
   Player: { song?: Song } | undefined;
+  Artists: undefined;
+  ArtistSongs: { artistId?: string; artistName: string; avatar?: string };
+  Developer: undefined;
 };

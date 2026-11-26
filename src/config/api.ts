@@ -19,7 +19,7 @@ export const MUSIC_API = {
   // Artists
   artist: `${BASE_URL}/artists?id={artistId}`,
   artistById: `${BASE_URL}/artists/{artistId}`,
-  artistSongs: `${BASE_URL}/artists/{artistId}/songs`,
+  artistSongs: `${BASE_URL}/artists/{artistId}/songs?page={page}`,
   artistAlbums: `${BASE_URL}/artists/{artistId}/albums`,
 
   // Playlists

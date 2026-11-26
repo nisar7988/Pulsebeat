@@ -57,36 +57,49 @@ export interface ApiArtist {
   avatar: string;
 }
 
-// Fetch popular artists from API based on preferred languages or global seeds
+const LANGUAGE_ARTIST_SEEDS: Record<string, string[]> = {
+  english: ['The Weeknd', 'Taylor Swift', 'Drake', 'Dua Lipa', 'Billie Eilish', 'Ed Sheeran'],
+  hindi: ['Arijit Singh', 'Shreya Ghoshal', 'Atif Aslam', 'Pritam', 'Jubin Nautiyal', 'Badshah'],
+  punjabi: ['Diljit Dosanjh', 'Karan Aujla', 'AP Dhillon', 'Sidhu Moose Wala', 'Shubh', 'Ammy Virk'],
+  tamil: ['Anirudh Ravichander', 'A.R. Rahman', 'Sid Sriram', 'Yuvan Shankar Raja', 'G.V. Prakash'],
+  telugu: ['Devi Sri Prasad', 'Thaman S', 'Sid Sriram', 'Anirudh Ravichander', 'Armaan Malik'],
+  spanish: ['Bad Bunny', 'Rosalia', 'J Balvin', 'Shakira', 'Karol G'],
+  korean: ['BTS', 'BLACKPINK', 'Jungkook', 'Stray Kids', 'NewJeans'],
+  japanese: ['YOASOBI', 'Kenshi Yonezu', 'Ado', 'Fujii Kaze', 'LiSA'],
+  french: ['Stromae', 'Aya Nakamura', 'Indila', 'Daft Punk', 'Gims'],
+  german: ['Rammstein', 'Apache 207', 'Robin Schulz', 'Zedd', 'Cro'],
+  arabic: ['Amr Diab', 'Nancy Ajram', 'Elissa', 'Tamer Hosny', 'Saad Lamjarred'],
+  bengali: ['Arijit Singh', 'Anupam Roy', 'Shreya Ghoshal', 'Nachiketa', 'Fossils'],
+};
+
+// Fetch popular artists from API matching user's preferred languages
 export const getPopularArtists = async (languages: string[] = []): Promise<ApiArtist[]> => {
   const lowerLanguages = languages.map((l) => l.toLowerCase());
   const seeds: string[] = [];
-  if (lowerLanguages.includes('punjabi')) {
-    seeds.push('Diljit Dosanjh', 'Sidhu Moose Wala', 'Karan Aujla', 'AP Dhillon');
-  }
-  if (lowerLanguages.includes('hindi')) {
-    seeds.push('Arijit Singh', 'Shreya Ghoshal', 'Atif Aslam', 'Badshah');
-  }
-  if (lowerLanguages.includes('spanish')) {
-    seeds.push('Bad Bunny', 'Rosalia', 'J Balvin');
-  }
-  if (lowerLanguages.includes('korean')) {
-    seeds.push('BTS', 'BLACKPINK');
-  }
-  seeds.push(
-    'The Weeknd',
-    'Taylor Swift',
-    'Drake',
-    'Dua Lipa',
-    'Billie Eilish',
-    'Ed Sheeran',
-    'Bruno Mars',
-    'Post Malone',
-    'Ariana Grande',
-    'Justin Bieber',
-  );
 
-  const uniqueSeeds = Array.from(new Set(seeds)).slice(0, 15);
+  for (const lang of lowerLanguages) {
+    const langSeeds = LANGUAGE_ARTIST_SEEDS[lang];
+    if (langSeeds) {
+      seeds.push(...langSeeds);
+    }
+  }
+
+  if (seeds.length < 10) {
+    seeds.push(
+      'The Weeknd',
+      'Taylor Swift',
+      'Arijit Singh',
+      'Drake',
+      'Dua Lipa',
+      'Billie Eilish',
+      'Ed Sheeran',
+      'Bruno Mars',
+      'Post Malone',
+      'Ariana Grande',
+    );
+  }
+
+  const uniqueSeeds = Array.from(new Set(seeds)).slice(0, 14);
 
   const results = await Promise.allSettled(
     uniqueSeeds.map(async (name) => {
@@ -94,8 +107,8 @@ export const getPopularArtists = async (languages: string[] = []): Promise<ApiAr
       const first = res?.data?.results?.[0];
       if (!first) return null;
       const imageUrl =
-        first.image?.[1]?.url ||
         first.image?.[2]?.url ||
+        first.image?.[1]?.url ||
         first.image?.[0]?.url ||
         'https://c.saavncdn.com/artists/default_150x150.jpg';
       return {
@@ -109,13 +122,75 @@ export const getPopularArtists = async (languages: string[] = []): Promise<ApiAr
   );
 
   const artists: ApiArtist[] = [];
+  const seenIds = new Set<string>();
   for (const r of results) {
-    if (r.status === 'fulfilled' && r.value) {
+    if (r.status === 'fulfilled' && r.value && !seenIds.has(r.value.id)) {
+      seenIds.add(r.value.id);
       artists.push(r.value);
     }
   }
 
   return artists;
+};
+
+// Resolve user-selected artist IDs/slugs into ApiArtist objects with avatars
+export const resolveSelectedArtists = async (
+  artistIds: string[],
+  savedProfiles: Record<string, ApiArtist> = {},
+  artistNames: Record<string, string> = {},
+): Promise<ApiArtist[]> => {
+  if (!artistIds.length) return [];
+
+  const resolved = await Promise.allSettled(
+    artistIds.map(async (id): Promise<ApiArtist | null> => {
+      if (savedProfiles[id]?.name && savedProfiles[id]?.avatar) {
+        return savedProfiles[id];
+      }
+      const isNumericId = /^\d+$/.test(id);
+      if (isNumericId) {
+        const res = await getArtistDetails(id);
+        const item = res?.data;
+        if (item?.id && item?.name) {
+          return {
+            id: String(item.id),
+            name: String(item.name),
+            role: item.role || 'Artist',
+            genre: item.role || 'Artist',
+            avatar:
+              item.image?.[2]?.url ||
+              item.image?.[1]?.url ||
+              item.image?.[0]?.url ||
+              'https://c.saavncdn.com/artists/default_150x150.jpg',
+          };
+        }
+      }
+      const lookupName = artistNames[id] || id.replace(/-/g, ' ');
+      const res = await getArtistBySearch(lookupName, 1, 1);
+      const first = res?.data?.results?.[0];
+      if (!first) return null;
+      return {
+        id: String(first.id),
+        name: String(first.name),
+        role: first.role || 'Artist',
+        genre: first.role || 'Artist',
+        avatar:
+          first.image?.[2]?.url ||
+          first.image?.[1]?.url ||
+          first.image?.[0]?.url ||
+          'https://c.saavncdn.com/artists/default_150x150.jpg',
+      };
+    }),
+  );
+
+  const list: ApiArtist[] = [];
+  const seen = new Set<string>();
+  for (const item of resolved) {
+    if (item.status === 'fulfilled' && item.value && !seen.has(item.value.id)) {
+      seen.add(item.value.id);
+      list.push(item.value);
+    }
+  }
+  return list;
 };
 
 // Search artists for onboarding
@@ -176,8 +251,8 @@ export const getArtistDetails = async (artistId: string) => {
   return await response.json();
 };
 
-// Artist Songs
-export const getArtistSongs = async (artistId: string, page = 1) => {
+// Artist Songs (0-indexed pagination on API)
+export const getArtistSongs = async (artistId: string, page = 0) => {
   const response = await fetch(
     MUSIC_API.artistSongs
       .replace("{artistId}", encodeURIComponent(artistId))
@@ -186,16 +261,32 @@ export const getArtistSongs = async (artistId: string, page = 1) => {
   return await response.json();
 };
 
-// Songs by Genre
-export const getSongsByGenre = async (genre: string, page = 1, limit = 10) => {
-  const query = `${genre} hits`;
+// Songs by Genre (tailored to user's preferred language when provided)
+export const getSongsByGenre = async (
+  genre: string,
+  page = 1,
+  limit = 12,
+  language?: string,
+) => {
+  const query = language ? `${language} ${genre}` : `${genre} hits`;
   const response = await fetch(
     MUSIC_API.searchSongs
       .replace("{songName}", encodeURIComponent(query))
       .replace("{page}", String(page))
       .replace("{limit}", String(limit)),
   );
-  return await response.json();
+  const data = await response.json();
+  const results = data?.data?.results || [];
+  if (language && results.length === 0) {
+    const fallbackRes = await fetch(
+      MUSIC_API.searchSongs
+        .replace("{songName}", encodeURIComponent(`${genre} hits`))
+        .replace("{page}", String(page))
+        .replace("{limit}", String(limit)),
+    );
+    return await fallbackRes.json();
+  }
+  return data;
 };
 
 // Songs by Language

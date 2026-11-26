@@ -28,6 +28,7 @@ export interface ActivePlaylistDetail {
   badgeLabel?: string;
   image?: string;
   isLocal: boolean;
+  isBuiltIn?: boolean;
   songs: Song[];
 }
 
@@ -118,14 +119,14 @@ export default function PlaylistDetailModal({
             {playlist.badgeLabel ||
               (playlist.isLocal ? 'Local Playlist' : 'Curated Collection')}
           </Text>
-          {playlist.isLocal ? (
+          {playlist.isLocal && !playlist.isBuiltIn ? (
             <TouchableOpacity
               onPress={handleDelete}
               className="h-10 w-10 rounded-full border border-glass-border bg-glass-tint items-center justify-center"
             >
               <Feather name="trash-2" size={16} color="#EF4444" />
             </TouchableOpacity>
-          ) : onSaveCuratedPlaylist ? (
+          ) : !playlist.isLocal && onSaveCuratedPlaylist ? (
             <TouchableOpacity
               disabled={loading || playlist.songs.length === 0}
               onPress={() => onSaveCuratedPlaylist(playlist)}
@@ -155,7 +156,7 @@ export default function PlaylistDetailModal({
                 />
               ) : (
                 <Feather
-                  name="music"
+                  name={playlist.isBuiltIn ? 'heart' : 'music'}
                   size={48}
                   color={theme.colors.accent.DEFAULT}
                 />
@@ -187,7 +188,7 @@ export default function PlaylistDetailModal({
                 >
                   {playlist.title}
                 </Text>
-                {playlist.isLocal && onRenamePlaylist && (
+                {playlist.isLocal && !playlist.isBuiltIn && onRenamePlaylist && (
                   <TouchableOpacity
                     onPress={() => {
                       setDraftTitle(playlist.title);

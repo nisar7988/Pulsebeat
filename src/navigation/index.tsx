@@ -4,6 +4,9 @@ import AppTabs from './Tabs';
 import type { RootStackParamList } from './types';
 import PlayerScreen from '../screens/PlayerScreen';
 import OnboardingScreen from '../screens/onboarding';
+import ArtistsScreen from '../screens/ArtistsScreen';
+import ArtistSongsScreen from '../screens/ArtistSongsScreen';
+import DeveloperScreen from '../screens/DeveloperScreen';
 import { useUserStore } from '../store';
 import { theme } from '../theme';
 
@@ -33,6 +36,21 @@ export default function RootNavigator() {
         name="Player"
         component={PlayerScreen}
         options={{ animation: 'fade_from_bottom' }}
+      />
+      <Stack.Screen
+        name="Artists"
+        component={ArtistsScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="ArtistSongs"
+        component={ArtistSongsScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="Developer"
+        component={DeveloperScreen}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );

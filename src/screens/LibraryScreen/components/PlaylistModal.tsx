@@ -17,18 +17,22 @@ interface PlaylistModalProps {
   visible: boolean;
   songToAdd?: Song | null;
   playlists: UserPlaylist[];
+  likedSongs?: Song[];
   onClose: () => void;
   onCreatePlaylist: (name: string, song?: Song | null) => void;
   onSelectPlaylist?: (playlistId: string, song: Song) => void;
+  onToggleLikeSong?: (song: Song) => void;
 }
 
 export default function PlaylistModal({
   visible,
   songToAdd,
   playlists,
+  likedSongs = [],
   onClose,
   onCreatePlaylist,
   onSelectPlaylist,
+  onToggleLikeSong,
 }: PlaylistModalProps) {
   const [name, setName] = useState('');
 
@@ -66,12 +70,42 @@ export default function PlaylistModal({
             </TouchableOpacity>
           </View>
 
-          {songToAdd && playlists.length > 0 && (
+          {songToAdd && (playlists.length > 0 || Boolean(onToggleLikeSong)) && (
             <View className="mb-4">
               <Text className="text-xs font-semibold text-text-muted mb-2">
                 Your Playlists
               </Text>
-              <ScrollView style={{ maxHeight: 170 }}>
+              <ScrollView style={{ maxHeight: 190 }}>
+                {onToggleLikeSong && (() => {
+                  const isLiked = likedSongs.some((s) => s.id === songToAdd.id);
+                  return (
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        onToggleLikeSong(songToAdd);
+                        onClose();
+                      }}
+                      className="flex-row items-center justify-between py-2.5 px-3 mb-2 rounded-xl border border-accent/35 bg-accent/10"
+                    >
+                      <View className="flex-row items-center gap-2.5 flex-1">
+                        <Feather
+                          name="heart"
+                          size={15}
+                          color={theme.colors.accent.DEFAULT}
+                        />
+                        <Text
+                          className="text-sm font-bold text-white flex-1"
+                          numberOfLines={1}
+                        >
+                          Liked Songs
+                        </Text>
+                      </View>
+                      <Text className="text-xs font-semibold text-accent">
+                        {isLiked ? 'Liked ✓' : `${likedSongs.length} tracks`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
                 {playlists.map((pl) => {
                   const alreadyIn = pl.songs.some((s) => s.id === songToAdd.id);
                   return (

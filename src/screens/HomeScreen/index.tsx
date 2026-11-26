@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Feather from 'react-native-vector-icons/Feather';
 
 import {
   getSongsByLanguage,
@@ -19,12 +21,13 @@ import {
   getArtistSongs,
   getSongBySearch,
   getPopularArtists,
+  resolveSelectedArtists,
   ApiArtist,
 } from '../../service/music';
 import { Song } from '../../types/song';
 import { useUserStore, useCurrentSongStore } from '../../store';
 import { navigateAndPlaySong } from '../../service/player';
-import { AppTabParamList } from '../../navigation/types';
+import { AppTabParamList, RootStackParamList } from '../../navigation/types';
 import { theme } from '../../theme';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import {
@@ -38,10 +41,30 @@ import {
 const keyExtractorSong = (item: Song) => item.id;
 const keyExtractorArtist = (item: ApiArtist) => item.id;
 
+function dedupeSongs(list: Song[]): Song[] {
+  const seenIds = new Set<string>();
+  const seenTitles = new Set<string>();
+  const out: Song[] = [];
+  for (const s of list) {
+    if (!s?.id || seenIds.has(s.id)) continue;
+    const titleKey = (s.name || '').trim().toLowerCase();
+    if (titleKey && seenTitles.has(titleKey)) continue;
+    seenIds.add(s.id);
+    if (titleKey) seenTitles.add(titleKey);
+    out.push(s);
+  }
+  return out;
+}
+
 export default function HomeScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
-  const { selectedLanguages, selectedGenres, selectedArtists, artistNames } =
-    useUserStore();
+  const {
+    selectedLanguages,
+    selectedGenres,
+    selectedArtists,
+    artistNames,
+    artistProfiles,
+  } = useUserStore();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
 
   const userLanguages = useMemo(
@@ -57,7 +80,7 @@ export default function HomeScreen() {
   const [activeLanguage, setActiveLanguage] = useState(userLanguages[0]);
   const [activeGenre, setActiveGenre] = useState(userGenres[0]);
   const [activeArtist, setActiveArtist] = useState<string>(
-    selectedArtists[0] || 'Arijit Singh',
+    selectedArtists[0] || '',
   );
 
   // Sync active filters if user preferences change (e.g. edited in Profile)
@@ -80,7 +103,12 @@ export default function HomeScreen() {
   useEffect(() => {
     if (selectedArtists.length > 0) {
       setActiveArtist((prev) =>
-        prev && (selectedArtists.includes(prev) || artistListRef.current.some((a) => a.name === prev || a.id === prev))
+        prev &&
+        (selectedArtists.includes(prev) ||
+          artistListRef.current.some(
+            (a) =>
+              a.id === prev || a.name.toLowerCase() === prev.toLowerCase(),
+          ))
           ? prev
           : selectedArtists[0],
       );
@@ -110,16 +138,42 @@ export default function HomeScreen() {
     [navigation],
   );
 
-  // Load artists details/avatars
+  // Load personalized artists: user's selected artists first, then language-matched popular artists
   useEffect(() => {
     let isMounted = true;
     const loadArtists = async () => {
       try {
-        const popular = await getPopularArtists(userLanguages);
-        if (isMounted && popular.length > 0) {
-          artistListRef.current = popular;
-          setArtistList(popular);
-          setActiveArtist((prev) => prev || popular[0]?.name || '');
+        const [selectedResolved, popular] = await Promise.all([
+          resolveSelectedArtists(selectedArtists, artistProfiles, artistNames),
+          getPopularArtists(userLanguages),
+        ]);
+
+        if (!isMounted) return;
+
+        const merged: ApiArtist[] = [];
+        const seenIds = new Set<string>();
+        const seenNames = new Set<string>();
+
+        for (const a of [...selectedResolved, ...popular]) {
+          const nameKey = a.name.trim().toLowerCase();
+          if (seenIds.has(a.id) || (nameKey && seenNames.has(nameKey))) continue;
+          seenIds.add(a.id);
+          if (nameKey) seenNames.add(nameKey);
+          merged.push(a);
+        }
+
+        if (merged.length > 0) {
+          artistListRef.current = merged;
+          setArtistList(merged);
+          setActiveArtist((prev) => {
+            if (!prev) return merged[0].id || merged[0].name;
+            const stillPresent = merged.some(
+              (a) =>
+                a.id === prev ||
+                a.name.toLowerCase() === prev.toLowerCase(),
+            );
+            return stillPresent ? prev : merged[0].id || merged[0].name;
+          });
         }
       } catch (e) {
         console.log('Error loading artists for Home:', e);
@@ -129,7 +183,7 @@ export default function HomeScreen() {
     return () => {
       isMounted = false;
     };
-  }, [userLanguages]);
+  }, [artistNames, artistProfiles, selectedArtists, userLanguages]);
 
   const fetchLanguageSongs = useCallback(async (lang: string, bypassCache = false) => {
     if (!bypassCache && languageCache.current.has(lang)) {
@@ -141,7 +195,7 @@ export default function HomeScreen() {
     try {
       setFeedError(false);
       const res = await getSongsByLanguage(lang);
-      const songs: Song[] = res?.data?.results ?? [];
+      const songs = dedupeSongs(res?.data?.results ?? []);
       languageCache.current.set(lang, songs);
       setTrendingSongs(songs);
     } catch (e) {
@@ -152,47 +206,71 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const fetchGenreSongs = useCallback(async (genre: string, bypassCache = false) => {
-    if (!bypassCache && genreCache.current.has(genre)) {
-      setGenreSongs(genreCache.current.get(genre)!);
-      return;
-    }
-    try {
-      const res = await getSongsByGenre(genre);
-      const songs: Song[] = res?.data?.results ?? [];
-      genreCache.current.set(genre, songs);
-      setGenreSongs(songs);
-    } catch (e) {
-      console.log('Error loading genre songs:', e);
-    }
-  }, []);
+  const fetchGenreSongs = useCallback(
+    async (genre: string, language: string, bypassCache = false) => {
+      const cacheKey = `${language.toLowerCase()}::${genre.toLowerCase()}`;
+      if (!bypassCache && genreCache.current.has(cacheKey)) {
+        setGenreSongs(genreCache.current.get(cacheKey)!);
+        return;
+      }
+      try {
+        const res = await getSongsByGenre(genre, 1, 12, language);
+        const songs = dedupeSongs(res?.data?.results ?? []);
+        genreCache.current.set(cacheKey, songs);
+        setGenreSongs(songs);
+      } catch (e) {
+        console.log('Error loading genre songs:', e);
+      }
+    },
+    [],
+  );
 
-  const fetchArtistSongs = useCallback(async (artist: string, bypassCache = false) => {
-    if (!artist) return;
-    if (!bypassCache && artistCache.current.has(artist)) {
-      setArtistSongs(artistCache.current.get(artist)!);
-      return;
-    }
-    try {
-      const isNumericId = /^\d+$/.test(artist);
-      const res = isNumericId
-        ? await getArtistSongs(artist)
-        : await getSongBySearch(artist);
-      const songs: Song[] = (res?.data?.songs || res?.data?.results || []).slice(0, 8);
-      artistCache.current.set(artist, songs);
-      setArtistSongs(songs);
-    } catch (e) {
-      console.log('Error loading artist songs:', e);
-    }
-  }, []);
+  const fetchArtistSongs = useCallback(
+    async (artist: string, bypassCache = false) => {
+      if (!artist) return;
+      if (!bypassCache && artistCache.current.has(artist)) {
+        setArtistSongs(artistCache.current.get(artist)!);
+        return;
+      }
+      try {
+        const isNumericId = /^\d+$/.test(artist);
+        const matchedFromList = artistListRef.current.find(
+          (a) =>
+            a.id === artist || a.name.toLowerCase() === artist.toLowerCase(),
+        );
+        const targetId = isNumericId
+          ? artist
+          : matchedFromList && /^\d+$/.test(matchedFromList.id)
+          ? matchedFromList.id
+          : null;
+
+        const lookupQuery =
+          matchedFromList?.name ||
+          artistNames[artist] ||
+          artist.replace(/-/g, ' ');
+
+        const res = targetId
+          ? await getArtistSongs(targetId, 0)
+          : await getSongBySearch(lookupQuery);
+        const songs = dedupeSongs(
+          res?.data?.songs || res?.data?.results || [],
+        ).slice(0, 8);
+        artistCache.current.set(artist, songs);
+        setArtistSongs(songs);
+      } catch (e) {
+        console.log('Error loading artist songs:', e);
+      }
+    },
+    [artistNames],
+  );
 
   useEffect(() => {
     fetchLanguageSongs(activeLanguage);
   }, [activeLanguage, fetchLanguageSongs]);
 
   useEffect(() => {
-    fetchGenreSongs(activeGenre);
-  }, [activeGenre, fetchGenreSongs]);
+    fetchGenreSongs(activeGenre, activeLanguage);
+  }, [activeGenre, activeLanguage, fetchGenreSongs]);
 
   useEffect(() => {
     fetchArtistSongs(activeArtist);
@@ -202,7 +280,7 @@ export default function HomeScreen() {
     setRefreshing(true);
     await Promise.allSettled([
       fetchLanguageSongs(activeLanguage, true),
-      fetchGenreSongs(activeGenre, true),
+      fetchGenreSongs(activeGenre, activeLanguage, true),
       fetchArtistSongs(activeArtist, true),
     ]);
     setRefreshing(false);
@@ -229,15 +307,46 @@ export default function HomeScreen() {
     [handlePlaySong],
   );
 
+  const openArtistsPage = useCallback(() => {
+    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+    if (parent) {
+      parent.navigate('Artists');
+    } else {
+      (navigation as any).navigate('Artists');
+    }
+  }, [navigation]);
+
+  const activeMatchedArtist = useMemo(
+    () =>
+      artistList.find(
+        (a) =>
+          a.id === activeArtist ||
+          a.name.toLowerCase() === activeArtist.toLowerCase(),
+      ),
+    [activeArtist, artistList],
+  );
+
   const activeArtistDisplayName = useMemo(() => {
     if (!activeArtist) return '';
-    const matched = artistList.find(
-      (a) =>
-        a.id === activeArtist ||
-        a.name.toLowerCase() === activeArtist.toLowerCase(),
-    );
-    return matched?.name || artistNames[activeArtist] || activeArtist;
-  }, [activeArtist, artistList, artistNames]);
+    return activeMatchedArtist?.name || artistNames[activeArtist] || activeArtist;
+  }, [activeArtist, activeMatchedArtist, artistNames]);
+
+  const openArtistSongsPage = useCallback(() => {
+    const params = {
+      artistId: activeMatchedArtist?.id || (/^\d+$/.test(activeArtist) ? activeArtist : undefined),
+      artistName: activeArtistDisplayName || 'Artist',
+      avatar: activeMatchedArtist?.avatar,
+    };
+    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
+    if (parent) {
+      parent.navigate('ArtistSongs', params);
+    } else {
+      (navigation as any).navigate('ArtistSongs', params);
+    }
+  }, [activeArtist, activeArtistDisplayName, activeMatchedArtist, navigation]);
+
+  const visibleArtists = useMemo(() => artistList.slice(0, 8), [artistList]);
+  const visibleArtistSongs = useMemo(() => artistSongs.slice(0, 6), [artistSongs]);
 
   const renderArtistChip = useCallback(
     ({ item }: { item: ApiArtist }) => {
@@ -275,38 +384,63 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
-            {artistList.length > 0 && (
+            {visibleArtists.length > 0 && (
               <View className="pt-2">
                 <SectionHeader
                   badge="YOUR ARTISTS"
                   title="Artists You Love"
                   subtitle="Tap an artist to explore their catalog"
+                  actionLabel="See all"
+                  onActionPress={openArtistsPage}
                 />
                 <FlatList
                   horizontal
-                  data={artistList}
+                  data={visibleArtists}
                   keyExtractor={keyExtractorArtist}
                   renderItem={renderArtistChip}
                   showsHorizontalScrollIndicator={false}
-                  contentContainerClassName="px-5 py-2"
+                  contentContainerClassName="px-5 py-2 items-start"
                   initialNumToRender={5}
                   maxToRenderPerBatch={5}
                   windowSize={3}
                   removeClippedSubviews={Platform.OS === 'android'}
+                  ListFooterComponent={
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={openArtistsPage}
+                      className="items-center w-16"
+                    >
+                      <View className="w-16 h-16 rounded-full border border-dashed border-accent/60 bg-accent/10 items-center justify-center">
+                        <Feather
+                          name="arrow-right"
+                          size={20}
+                          color={theme.colors.accent.DEFAULT}
+                        />
+                      </View>
+                      <Text
+                        className="text-xs text-center mt-1.5 font-bold text-accent"
+                        numberOfLines={1}
+                      >
+                        View All
+                      </Text>
+                    </TouchableOpacity>
+                  }
                 />
               </View>
             )}
 
-            {artistSongs.length > 0 && (
+            {visibleArtistSongs.length > 0 && (
               <View className="pt-2">
                 <SectionHeader
                   badge="SPOTLIGHT"
                   title={`Featuring ${activeArtistDisplayName}`}
                   subtitle="Top tracks from your chosen artist"
+                  actionLabel="View more"
+                  onActionPress={openArtistSongsPage}
                 />
                 <FlatList
                   horizontal
-                  data={artistSongs}
+                  data={visibleArtistSongs}
                   keyExtractor={keyExtractorSong}
                   renderItem={renderHorizontalSong}
                   showsHorizontalScrollIndicator={false}
@@ -315,6 +449,32 @@ export default function HomeScreen() {
                   maxToRenderPerBatch={4}
                   windowSize={3}
                   removeClippedSubviews={Platform.OS === 'android'}
+                  ListFooterComponent={
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={openArtistSongsPage}
+                      className="w-32"
+                    >
+                      <View className="w-32 h-36 rounded-2xl border border-dashed border-accent/50 bg-accent/10 items-center justify-center p-3">
+                        <View className="h-10 w-10 rounded-full bg-accent/20 border border-accent/40 items-center justify-center mb-2">
+                          <Feather
+                            name="arrow-right"
+                            size={18}
+                            color={theme.colors.accent.DEFAULT}
+                          />
+                        </View>
+                        <Text className="text-xs font-bold text-accent text-center">
+                          View More Songs
+                        </Text>
+                        <Text
+                          className="text-[10px] text-white/60 text-center mt-0.5"
+                          numberOfLines={1}
+                        >
+                          {activeArtistDisplayName}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  }
                 />
               </View>
             )}
@@ -390,16 +550,18 @@ export default function HomeScreen() {
       activeArtistDisplayName,
       activeGenre,
       activeLanguage,
-      artistList,
-      artistSongs,
       genreSongs,
       isLoading,
       navigation,
+      openArtistSongsPage,
+      openArtistsPage,
       refreshing,
       renderArtistChip,
       renderHorizontalSong,
       userGenres,
       userLanguages,
+      visibleArtistSongs,
+      visibleArtists,
     ],
   );
 

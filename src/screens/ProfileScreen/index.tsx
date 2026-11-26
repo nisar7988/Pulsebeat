@@ -31,6 +31,7 @@ import {
   navigateAndPlaySong,
 } from '../../service/player';
 import EditProfileModal, { AVATAR_PRESETS } from './components/EditProfileModal';
+import EditArtistsModal from './components/EditArtistsModal';
 
 const AVAILABLE_LANGUAGES = [
   'English',
@@ -87,6 +88,7 @@ export default function ProfileScreen() {
     selectedGenres,
     selectedArtists,
     artistNames,
+    artistProfiles,
     profileName,
     profileHandle,
     avatarId,
@@ -113,6 +115,7 @@ export default function ProfileScreen() {
   } = useListeningStore();
 
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editArtistsModalVisible, setEditArtistsModalVisible] = useState(false);
 
   const avatarPreset = useMemo(
     () => AVATAR_PRESETS.find((p) => p.id === avatarId) ?? AVATAR_PRESETS[0],
@@ -134,14 +137,19 @@ export default function ProfileScreen() {
     const entries = Object.entries(artistPlayCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
-      .map(([name, count]) => ({ name, badge: `${count} plays` }));
+      .map(([name, count]) => ({
+        name,
+        badge: `${count} plays`,
+        avatar: undefined as string | undefined,
+      }));
 
     if (entries.length > 0) return entries;
     return selectedArtists.map((id, idx) => ({
-      name: artistNames[id] || id,
+      name: artistProfiles[id]?.name || artistNames[id] || id,
       badge: `#${idx + 1} Pick`,
+      avatar: artistProfiles[id]?.avatar,
     }));
-  }, [artistPlayCounts, artistNames, selectedArtists]);
+  }, [artistPlayCounts, artistNames, artistProfiles, selectedArtists]);
 
   const memberSince = useMemo(() => {
     const date = new Date(joinedAt || Date.now());
@@ -219,14 +227,24 @@ export default function ProfileScreen() {
                 Local Vault • Member since {memberSince}
               </Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setEditModalVisible(true)}
-              className="h-10 px-3.5 flex-row items-center gap-1.5 rounded-full border border-glass-border bg-glass-tint"
-            >
-              <Feather name="edit-2" size={14} color={theme.colors.accent.DEFAULT} />
-              <Text className="text-xs font-bold text-accent">Edit</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Developer')}
+                accessibilityLabel="Developer Shoutout"
+                className="h-10 w-10 items-center justify-center rounded-full border border-glass-border bg-glass-tint"
+              >
+                <Feather name="code" size={16} color={theme.colors.accent.DEFAULT} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setEditModalVisible(true)}
+                className="h-10 px-3.5 flex-row items-center gap-1.5 rounded-full border border-glass-border bg-glass-tint"
+              >
+                <Feather name="edit-2" size={14} color={theme.colors.accent.DEFAULT} />
+                <Text className="text-xs font-bold text-accent">Edit</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Hero Profile Banner */}
@@ -395,19 +413,24 @@ export default function ProfileScreen() {
           )}
 
           {/* Top / Followed Artists */}
-          {topArtists.length > 0 && (
-            <View className="mb-5">
-              <View className="px-5 mb-3 flex-row items-center justify-between">
-                <Text className="text-base font-bold text-white">
-                  {Object.keys(artistPlayCounts).length > 0
-                    ? 'Your Top Artists'
-                    : 'Followed Artists'}
+          <View className="mb-5">
+            <View className="px-5 mb-3 flex-row items-center justify-between">
+              <Text className="text-base font-bold text-white">
+                {Object.keys(artistPlayCounts).length > 0
+                  ? 'Your Top Artists'
+                  : 'Followed Artists'}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setEditArtistsModalVisible(true)}
+              >
+                <Text className="text-xs font-bold text-accent">
+                  {selectedArtists.length > 0 ? 'Edit Artists' : '+ Add Artists'}
                 </Text>
-                <TouchableOpacity activeOpacity={0.7} onPress={handleRestartOnboarding}>
-                  <Text className="text-xs font-bold text-accent">Re-tune</Text>
-                </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
+            </View>
 
+            {topArtists.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -418,9 +441,17 @@ export default function ProfileScreen() {
                     key={artist.name}
                     className="w-24 items-center p-3 rounded-2xl border border-glass-border bg-glass-tint"
                   >
-                    <View className="h-12 w-12 rounded-full border border-accent bg-accent/15 items-center justify-center mb-2">
-                      <Feather name="mic" size={18} color={theme.colors.accent.DEFAULT} />
-                    </View>
+                    {artist.avatar ? (
+                      <Image
+                        source={{ uri: artist.avatar }}
+                        className="h-12 w-12 rounded-full border border-accent mb-2"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="h-12 w-12 rounded-full border border-accent bg-accent/15 items-center justify-center mb-2">
+                        <Feather name="mic" size={18} color={theme.colors.accent.DEFAULT} />
+                      </View>
+                    )}
                     <Text
                       className="text-xs font-bold text-white text-center"
                       numberOfLines={1}
@@ -431,8 +462,21 @@ export default function ProfileScreen() {
                   </View>
                 ))}
               </ScrollView>
-            </View>
-          )}
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setEditArtistsModalVisible(true)}
+                className="mx-5 p-4 rounded-2xl border border-dashed border-accent/45 bg-accent/10 flex-row items-center gap-3"
+              >
+                <View className="h-10 w-10 rounded-full bg-accent/20 items-center justify-center">
+                  <Feather name="plus" size={18} color={theme.colors.accent.DEFAULT} />
+                </View>
+                <Text className="text-xs text-text-muted flex-1">
+                  Tap here to pick your favorite artists and personalize your Home feed.
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* Audio & Playback Engine (Persisted & Wired) */}
           <View className="mx-5 mb-5 rounded-3xl border border-glass-border p-4 bg-glass-tint">
@@ -617,6 +661,36 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Developer Shoutout Entry Card */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Developer')}
+            className="mx-5 mb-6 overflow-hidden rounded-3xl border border-accent/35 p-4 bg-glass-tint flex-row items-center justify-between"
+          >
+            <LinearGradient
+              colors={['rgba(200, 249, 41, 0.14)', 'rgba(16, 28, 13, 0.72)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View className="flex-row items-center gap-3 flex-1 pr-2">
+              <View className="h-11 w-11 rounded-2xl bg-accent/20 border border-accent/50 items-center justify-center">
+                <Feather name="terminal" size={19} color={theme.colors.accent.DEFAULT} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-white">
+                  Developer Shoutout
+                </Text>
+                <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
+                  Built by Nisar Ahmed • View credits & links
+                </Text>
+              </View>
+            </View>
+            <View className="h-8 w-8 rounded-full bg-accent/15 items-center justify-center">
+              <Feather name="chevron-right" size={16} color={theme.colors.accent.DEFAULT} />
+            </View>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
 
@@ -627,6 +701,11 @@ export default function ProfileScreen() {
         initialAvatarId={avatarId}
         onClose={() => setEditModalVisible(false)}
         onSave={updateProfile}
+      />
+
+      <EditArtistsModal
+        visible={editArtistsModalVisible}
+        onClose={() => setEditArtistsModalVisible(false)}
       />
 
       <GlassMiniPlayer />

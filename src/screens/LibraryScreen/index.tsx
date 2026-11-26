@@ -46,6 +46,7 @@ interface CuratedPlaylistPreview {
 
 const FILTER_TABS = ['All', 'Playlists', 'Liked', 'Recent'] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
+const LIKED_PLAYLIST_ID = 'liked-songs';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
@@ -121,6 +122,20 @@ export default function LibraryScreen() {
     });
   };
 
+  const openLikedPlaylist = () => {
+    setDetailLoading(false);
+    setDetailPlaylist({
+      id: LIKED_PLAYLIST_ID,
+      title: 'Liked Songs',
+      subtitle: `${likedSongs.length} tracks`,
+      badgeLabel: 'Favorites Playlist',
+      image: likedSongs[0] ? getSongArtwork(likedSongs[0]) : undefined,
+      isLocal: true,
+      isBuiltIn: true,
+      songs: likedSongs,
+    });
+  };
+
   const openCuratedPlaylist = async (pl: CuratedPlaylistPreview) => {
     setDetailPlaylist({
       id: pl.id,
@@ -158,21 +173,39 @@ export default function LibraryScreen() {
     openPlaylistModal(null);
   };
 
-  // Keep detail modal in sync if user renames or removes a song from a local playlist
+  // Keep detail modal in sync if user renames or removes a song from Liked Songs or a local playlist
   const syncedDetailPlaylist = detailPlaylist?.isLocal
-    ? (() => {
-        const latest = localPlaylists.find((p) => p.id === detailPlaylist.id);
-        return latest
-          ? {
-              ...detailPlaylist,
-              title: latest.name,
-              subtitle: `${latest.songs.length} tracks`,
-              songs: latest.songs,
-              image: latest.songs[0] ? getSongArtwork(latest.songs[0]) : undefined,
-            }
-          : detailPlaylist;
-      })()
+    ? detailPlaylist.id === LIKED_PLAYLIST_ID
+      ? {
+          ...detailPlaylist,
+          subtitle: `${likedSongs.length} tracks`,
+          songs: likedSongs,
+          image: likedSongs[0] ? getSongArtwork(likedSongs[0]) : undefined,
+        }
+      : (() => {
+          const latest = localPlaylists.find((p) => p.id === detailPlaylist.id);
+          return latest
+            ? {
+                ...detailPlaylist,
+                title: latest.name,
+                subtitle: `${latest.songs.length} tracks`,
+                songs: latest.songs,
+                image: latest.songs[0] ? getSongArtwork(latest.songs[0]) : undefined,
+              }
+            : detailPlaylist;
+        })()
     : detailPlaylist;
+
+  const handleRemovePlaylistSong = (playlistId: string, songId: string) => {
+    if (playlistId === LIKED_PLAYLIST_ID) {
+      const target = likedSongs.find((s) => s.id === songId);
+      if (target) {
+        toggleLikeSong(target);
+      }
+      return;
+    }
+    removeSongFromPlaylist(playlistId, songId);
+  };
 
   const renderSongRow = (song: Song, queue: Song[], index: number, showUnlike = false) => (
     <TouchableOpacity
@@ -241,7 +274,7 @@ export default function LibraryScreen() {
                 Your Library
               </Text>
               <Text className="mt-0.5 text-xs text-text-muted">
-                {localPlaylists.length} playlists • {likedSongs.length} liked • {recentPlays.length} recent
+                {localPlaylists.length + 1} playlists • {likedSongs.length} liked • {recentPlays.length} recent
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
@@ -299,13 +332,7 @@ export default function LibraryScreen() {
             <View className="px-5 mb-5">
               <TouchableOpacity
                 activeOpacity={0.85}
-                onPress={() => {
-                  if (activeFilter === 'All') {
-                    setActiveFilter('Liked');
-                  } else if (likedSongs.length > 0) {
-                    playQueueAndNavigate(navigation, likedSongs, 0);
-                  }
-                }}
+                onPress={openLikedPlaylist}
                 className="overflow-hidden rounded-3xl border border-glass-border p-4 bg-glass-tint relative"
               >
                 <LinearGradient
@@ -384,6 +411,41 @@ export default function LibraryScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerClassName="px-5 gap-3.5"
               >
+                {/* Built-in Liked Songs Playlist Card */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={openLikedPlaylist}
+                  className="w-36"
+                >
+                  <View className="w-36 h-36 rounded-2xl overflow-hidden border border-accent/40 bg-accent/15 items-center justify-center relative">
+                    {likedSongs[0] ? (
+                      <Image
+                        source={{ uri: getSongArtwork(likedSongs[0]) }}
+                        className="w-full h-full"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Feather
+                        name="heart"
+                        size={34}
+                        color={theme.colors.accent.DEFAULT}
+                      />
+                    )}
+                    <View className="absolute top-2 left-2 h-7 w-7 rounded-full bg-black/65 border border-accent/40 items-center justify-center">
+                      <Feather name="heart" size={13} color={theme.colors.accent.DEFAULT} />
+                    </View>
+                    <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center">
+                      <Feather name="play" size={14} color={theme.colors.text.dark} />
+                    </View>
+                  </View>
+                  <Text className="text-sm font-semibold text-white mt-2" numberOfLines={1}>
+                    Liked Songs
+                  </Text>
+                  <Text className="text-xs text-text-muted mt-0.5">
+                    {likedSongs.length} {likedSongs.length === 1 ? 'track' : 'tracks'}
+                  </Text>
+                </TouchableOpacity>
+
                 {localPlaylists.map((pl) => (
                   <TouchableOpacity
                     key={pl.id}
@@ -523,7 +585,7 @@ export default function LibraryScreen() {
         onPlayAll={(songs, startIndex) =>
           playQueueAndNavigate(navigation, songs, startIndex)
         }
-        onRemoveSong={removeSongFromPlaylist}
+        onRemoveSong={handleRemovePlaylistSong}
         onRenamePlaylist={renamePlaylist}
         onDeletePlaylist={deletePlaylist}
         onSaveCuratedPlaylist={handleSaveCuratedPlaylist}
