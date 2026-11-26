@@ -163,13 +163,36 @@ function buildEqualizerSvg(theme: WidgetThemeColors): string {
 `;
 }
 
-function buildBrandWavesSvg(theme: WidgetThemeColors): string {
+function buildPulseBeatLogoSvg(theme: WidgetThemeColors): string {
   return `
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="12" cy="12" r="10.5" fill="#FFFFFF" fill-opacity="0.86" />
-  <path d="M6.8 9.6C10.1 8.5 14.3 8.8 17.3 10.6" stroke="${theme.glassBottom}" stroke-width="1.8" stroke-linecap="round" />
-  <path d="M7.6 12.6C10.4 11.7 13.8 12.0 16.3 13.5" stroke="${theme.glassBottom}" stroke-width="1.6" stroke-linecap="round" />
-  <path d="M8.5 15.4C10.8 14.7 13.3 14.9 15.3 16.1" stroke="${theme.glassBottom}" stroke-width="1.4" stroke-linecap="round" />
+<svg width="28" height="28" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pbLogoGrad" x1="30" y1="30" x2="210" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="${theme.accentLight}" />
+      <stop offset="55%" stop-color="${theme.accent}" />
+      <stop offset="100%" stop-color="${theme.glowSecondary}" />
+    </linearGradient>
+    <linearGradient id="pbBarGrad" x1="0" y1="70" x2="0" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="${theme.accentLight}" />
+      <stop offset="100%" stop-color="${theme.glowSecondary}" />
+    </linearGradient>
+  </defs>
+  <circle cx="120" cy="120" r="96" stroke="url(#pbLogoGrad)" stroke-width="5" stroke-opacity="0.45" stroke-dasharray="18 10" />
+  <circle cx="120" cy="120" r="82" fill="${theme.glassBottom}" fill-opacity="0.92" stroke="url(#pbLogoGrad)" stroke-width="6" stroke-opacity="0.85" />
+  <rect x="52" y="110" width="6" height="20" rx="3" fill="url(#pbBarGrad)" opacity="0.75" />
+  <rect x="63" y="96" width="6" height="48" rx="3" fill="url(#pbBarGrad)" opacity="0.9" />
+  <rect x="74" y="104" width="6" height="32" rx="3" fill="url(#pbBarGrad)" />
+  <path
+    d="M92 84.5C92 79.4 97.6 76.2 102 78.8L152 108.3C156.3 110.8 156.3 117.2 152 119.7L102 149.2C97.6 151.8 92 148.6 92 143.5V84.5Z"
+    fill="url(#pbLogoGrad)"
+  />
+  <path
+    d="M117 98V124.5C115.6 123.7 113.9 123.3 112 123.5C108.1 123.9 105.2 127.1 105.5 130.8C105.8 134.5 109.2 137.2 113.1 136.8C116.8 136.4 119.5 133.5 119.5 129.9V106.5L131 103.5V119.5C129.6 118.7 127.9 118.3 126 118.5C122.1 118.9 119.2 122.1 119.5 125.8C119.8 129.5 123.2 132.2 127.1 131.8C130.8 131.4 133.5 128.5 133.5 124.9V97.5C133.5 95.6 131.8 94.2 129.9 94.7L119 97.5C117.8 97.8 117 98.8 117 98Z"
+    fill="${theme.onAccent}"
+  />
+  <rect x="160" y="102" width="6" height="36" rx="3" fill="url(#pbBarGrad)" />
+  <rect x="171" y="92" width="6" height="56" rx="3" fill="url(#pbBarGrad)" opacity="0.9" />
+  <rect x="182" y="110" width="6" height="20" rx="3" fill="url(#pbBarGrad)" opacity="0.75" />
 </svg>
 `;
 }
@@ -517,10 +540,10 @@ export function PulseBeatWidget({
             </FlexWidget>
 
             <SvgWidget
-              svg={buildBrandWavesSvg(theme)}
+              svg={buildPulseBeatLogoSvg(theme)}
               style={{
-                width: 24,
-                height: 24,
+                width: 28,
+                height: 28,
                 marginLeft: 8,
               }}
             />
