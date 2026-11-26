@@ -151,9 +151,60 @@ if (fs.existsSync(rntpModuleFile)) {
     changed = true;
   }
 
+  // Fix TurboModule interop: @ReactMethod functions using `= scope.launch { ... }`
+  // infer return type `Job` instead of `Unit` (void), crashing TurboModuleInteropUtils.
+  const launchRegex = /(\)\s*)=\s*\n?\s*scope\.launch\s*\{/g;
+  if (launchRegex.test(rntpContent)) {
+    launchRegex.lastIndex = 0;
+    let result = '';
+    let lastIndex = 0;
+    let match;
+    while ((match = launchRegex.exec(rntpContent)) !== null) {
+      const matchStart = match.index;
+      const openBraceIndex = launchRegex.lastIndex - 1;
+      let depth = 1;
+      let i = openBraceIndex + 1;
+      while (i < rntpContent.length && depth > 0) {
+        const ch = rntpContent[i];
+        if (ch === '{') depth++;
+        else if (ch === '}') depth--;
+        i++;
+      }
+      if (depth === 0) {
+        const closeBraceIndex = i - 1;
+        const body = rntpContent.slice(openBraceIndex + 1, closeBraceIndex);
+        result += rntpContent.slice(lastIndex, matchStart);
+        result += `${match[1]}{\n        scope.launch {${body}}\n    }`;
+        lastIndex = closeBraceIndex + 1;
+      }
+    }
+    if (lastIndex > 0) {
+      result += rntpContent.slice(lastIndex);
+      rntpContent = result;
+      changed = true;
+    }
+  }
+
   if (changed) {
     fs.writeFileSync(rntpModuleFile, rntpContent, 'utf8');
-    console.log('[patch-expo] Patched react-native-track-player MusicModule.kt null safety');
+    console.log('[patch-expo] Patched react-native-track-player MusicModule.kt');
+  }
+}
+
+// Fix react-native-track-player MusicService.kt crash in RN 0.88 New Architecture
+// (HeadlessJsTaskService provides `reactContext` for both Bridgeless and Legacy)
+const rntpServiceFile = path.join(
+  __dirname,
+  '../node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt'
+);
+
+if (fs.existsSync(rntpServiceFile)) {
+  let serviceContent = fs.readFileSync(rntpServiceFile, 'utf8');
+  const legacyAccessor = 'reactNativeHost.reactInstanceManager.currentReactContext';
+  if (serviceContent.includes(legacyAccessor)) {
+    serviceContent = serviceContent.replaceAll(legacyAccessor, 'reactContext');
+    fs.writeFileSync(rntpServiceFile, serviceContent, 'utf8');
+    console.log('[patch-expo] Patched react-native-track-player MusicService.kt to use reactContext');
   }
 }
 
