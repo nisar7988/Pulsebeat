@@ -4,6 +4,7 @@ import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GradientBackground from './src/components/global/GradientBackground';
 import AnimatedBootSplash from './src/components/global/AnimatedBootSplash';
+import GlobalPlaylistModal from './src/components/global/GlobalPlaylistModal';
 import RootNavigator from './src/navigation';
 import { theme } from './src/theme';
 import { initializePlayer } from './src/service/player';
@@ -36,6 +37,7 @@ function App() {
           <RootNavigator />
         </GradientBackground>
       </NavigationContainer>
+      <GlobalPlaylistModal />
       {splashVisible && (
         <AnimatedBootSplash
           ready={playerReady}

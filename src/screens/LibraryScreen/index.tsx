@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   RefreshControl,
   ScrollView,
@@ -14,72 +15,83 @@ import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { theme } from '../../theme';
 import { Song } from '../../types/song';
-import { navigateAndPlaySong } from '../../service/player';
-import { getPlaylistBySearch, getSongsByGenre } from '../../service/music';
-import { useCurrentSongStore, useUserStore } from '../../store';
-import { AppTabParamList, RootStackParamList } from '../../navigation/types';
+import {
+  getSongArtistName,
+  getSongArtwork,
+  playQueueAndNavigate,
+} from '../../service/player';
+import { getPlaylistBySearch, getPlaylistDetails } from '../../service/music';
+import {
+  useCurrentSongStore,
+  useListeningStore,
+  useUserStore,
+  UserPlaylist,
+} from '../../store';
+import { AppTabParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
-import { SongCard } from '../HomeScreen/components';
+import PlaylistDetailModal, {
+  ActivePlaylistDetail,
+} from './components/PlaylistDetailModal';
 
-interface PlaylistPreview {
+interface CuratedPlaylistPreview {
   id: string;
   title: string;
   subtitle: string;
   image: string;
-  songCount?: number;
 }
 
-const FILTER_TABS = ['All', 'Playlists', 'Liked', 'Recent'];
+const FILTER_TABS = ['All', 'Playlists', 'Liked', 'Recent'] as const;
+type FilterTab = (typeof FILTER_TABS)[number];
 
 export default function LibraryScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
   const { selectedGenres } = useUserStore();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
 
-  const [activeFilter, setActiveFilter] = useState('All');
-  const [playlists, setPlaylists] = useState<PlaylistPreview[]>([]);
-  const [recentTracks, setRecentTracks] = useState<Song[]>([]);
+  const {
+    likedSongs,
+    recentPlays,
+    playlists: localPlaylists,
+    toggleLikeSong,
+    createPlaylist,
+    deletePlaylist,
+    addSongToPlaylist,
+    removeSongFromPlaylist,
+    openPlaylistModal,
+  } = useListeningStore();
+
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
+  const [curatedPlaylists, setCuratedPlaylists] = useState<CuratedPlaylistPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const handlePlaySong = (song: Song) => {
-    navigateAndPlaySong(navigation, song);
-  };
+  const [detailPlaylist, setDetailPlaylist] =
+    useState<ActivePlaylistDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-  const loadLibraryContent = useCallback(async () => {
+  const loadCuratedPlaylists = useCallback(async () => {
     try {
       const preferredGenre = selectedGenres[0] || 'chill';
-      const [playlistRes, songsRes] = await Promise.allSettled([
-        getPlaylistBySearch(preferredGenre),
-        getSongsByGenre(preferredGenre, 1, 8),
-      ]);
-
-      if (playlistRes.status === 'fulfilled') {
-        const rawPlaylists = playlistRes.value?.data?.results || [];
-        const formatted: PlaylistPreview[] = rawPlaylists.slice(0, 6).map((item: any) => ({
+      const playlistRes = await getPlaylistBySearch(preferredGenre);
+      const rawPlaylists = playlistRes?.data?.results || [];
+      const formatted: CuratedPlaylistPreview[] = rawPlaylists
+        .slice(0, 8)
+        .map((item: any) => ({
           id: String(item.id),
           title: item.title || item.name || 'Curated Vibes',
-          subtitle: `${item.songCount || 20} songs • Playlist`,
+          subtitle: `${item.songCount || 20} songs • Curated`,
           image:
             item.image?.[2]?.url ||
             item.image?.[1]?.url ||
             item.image?.[0]?.url ||
             'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
-          songCount: item.songCount,
         }));
-        setPlaylists(formatted);
-      }
-
-      if (songsRes.status === 'fulfilled') {
-        const rawSongs: Song[] = songsRes.value?.data?.results || [];
-        setRecentTracks(rawSongs);
-      }
+      setCuratedPlaylists(formatted);
     } catch (err) {
-      console.log('Error loading library feed:', err);
+      console.log('Error loading curated playlists:', err);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -87,17 +99,118 @@ export default function LibraryScreen() {
   }, [selectedGenres]);
 
   useEffect(() => {
-    loadLibraryContent();
-  }, [loadLibraryContent]);
+    loadCuratedPlaylists();
+  }, [loadCuratedPlaylists]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadLibraryContent();
+    loadCuratedPlaylists();
   };
+
+  const openLocalPlaylist = (pl: UserPlaylist) => {
+    setDetailLoading(false);
+    setDetailPlaylist({
+      id: pl.id,
+      title: pl.name,
+      subtitle: `${pl.songs.length} tracks`,
+      image: pl.songs[0] ? getSongArtwork(pl.songs[0]) : undefined,
+      isLocal: true,
+      songs: pl.songs,
+    });
+  };
+
+  const openCuratedPlaylist = async (pl: CuratedPlaylistPreview) => {
+    setDetailPlaylist({
+      id: pl.id,
+      title: pl.title,
+      subtitle: pl.subtitle,
+      image: pl.image,
+      isLocal: false,
+      songs: [],
+    });
+    setDetailLoading(true);
+    try {
+      const res = await getPlaylistDetails(pl.id);
+      const songs: Song[] = res?.data?.songs || [];
+      setDetailPlaylist((prev) =>
+        prev && prev.id === pl.id ? { ...prev, songs } : prev,
+      );
+    } catch (err) {
+      console.log('Error fetching playlist details:', err);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleSaveCuratedPlaylist = (pl: ActivePlaylistDetail) => {
+    const created = createPlaylist(pl.title);
+    pl.songs.forEach((song) => addSongToPlaylist(created.id, song));
+    Alert.alert('Saved to Library', `"${pl.title}" was saved to your local playlists.`);
+  };
+
+  const openAddToPlaylist = (song: Song) => {
+    openPlaylistModal(song);
+  };
+
+  const openNewPlaylist = () => {
+    openPlaylistModal(null);
+  };
+
+  // Keep detail modal in sync if user removes a song from a local playlist
+  const syncedDetailPlaylist = detailPlaylist?.isLocal
+    ? (() => {
+        const latest = localPlaylists.find((p) => p.id === detailPlaylist.id);
+        return latest
+          ? {
+              ...detailPlaylist,
+              songs: latest.songs,
+              image: latest.songs[0] ? getSongArtwork(latest.songs[0]) : undefined,
+            }
+          : detailPlaylist;
+      })()
+    : detailPlaylist;
+
+  const renderSongRow = (song: Song, queue: Song[], index: number, showUnlike = false) => (
+    <TouchableOpacity
+      key={`${song.id}-${index}`}
+      activeOpacity={0.85}
+      onPress={() => playQueueAndNavigate(navigation, queue, index)}
+      className="mx-5 mb-2.5 flex-row items-center rounded-2xl border border-glass-border bg-glass-tint p-2.5"
+    >
+      <Image
+        source={{ uri: getSongArtwork(song) }}
+        className="w-12 h-12 rounded-xl mr-3"
+        resizeMode="cover"
+      />
+      <View className="flex-1 pr-2">
+        <Text className="text-sm font-bold text-white" numberOfLines={1}>
+          {song.name}
+        </Text>
+        <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
+          {getSongArtistName(song)}
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        onPress={() => openAddToPlaylist(song)}
+        className="h-9 w-9 items-center justify-center"
+      >
+        <Feather name="plus-circle" size={18} color="rgba(255,255,255,0.65)" />
+      </TouchableOpacity>
+
+      {showUnlike && (
+        <TouchableOpacity
+          onPress={() => toggleLikeSong(song)}
+          className="h-9 w-9 items-center justify-center"
+        >
+          <Feather name="heart" size={17} color={theme.colors.accent.DEFAULT} />
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <View className="flex-1 bg-background">
-      {/* Background Gradient */}
       <LinearGradient
         colors={theme.gradients.app}
         start={{ x: 0, y: 0 }}
@@ -124,16 +237,26 @@ export default function LibraryScreen() {
                 Your Library
               </Text>
               <Text className="mt-0.5 text-xs text-text-muted">
-                Playlists, favorites, and listening history
+                {localPlaylists.length} playlists • {likedSongs.length} liked • {recentPlays.length} recent
               </Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('Search')}
-              className="h-10 w-10 items-center justify-center rounded-full border border-glass-border bg-glass-tint"
-            >
-              <Feather name="search" size={18} color={theme.colors.accent.DEFAULT} />
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={openNewPlaylist}
+                className="h-10 px-3 flex-row items-center gap-1 rounded-full border border-accent/40 bg-accent/15"
+              >
+                <Feather name="plus" size={16} color={theme.colors.accent.DEFAULT} />
+                <Text className="text-xs font-bold text-accent">New</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Search')}
+                className="h-10 w-10 items-center justify-center rounded-full border border-glass-border bg-glass-tint"
+              >
+                <Feather name="search" size={18} color={theme.colors.accent.DEFAULT} />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Filter Pills */}
@@ -167,119 +290,241 @@ export default function LibraryScreen() {
             })}
           </ScrollView>
 
-          {isLoading && !refreshing ? (
-            <View className="py-24 items-center justify-center">
-              <ActivityIndicator size="large" color={theme.colors.accent.DEFAULT} />
-              <Text className="text-xs text-white/60 mt-3 font-medium">
-                Loading your music library...
-              </Text>
-            </View>
-          ) : (
-            <>
-              {/* Liked Songs Hero Card */}
-              {(activeFilter === 'All' || activeFilter === 'Liked') && (
-                <View className="px-5 mb-5">
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      if (recentTracks.length > 0) {
-                        handlePlaySong(recentTracks[0]);
-                      }
-                    }}
-                    className="overflow-hidden rounded-3xl border border-glass-border p-4 bg-glass-tint relative"
-                  >
-                    <LinearGradient
-                      colors={['rgba(200, 249, 41, 0.22)', 'rgba(22, 38, 17, 0.45)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
+          {/* Liked Songs Hero Card */}
+          {(activeFilter === 'All' || activeFilter === 'Liked') && (
+            <View className="px-5 mb-5">
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (activeFilter === 'All') {
+                    setActiveFilter('Liked');
+                  } else if (likedSongs.length > 0) {
+                    playQueueAndNavigate(navigation, likedSongs, 0);
+                  }
+                }}
+                className="overflow-hidden rounded-3xl border border-glass-border p-4 bg-glass-tint relative"
+              >
+                <LinearGradient
+                  colors={['rgba(200, 249, 41, 0.22)', 'rgba(22, 38, 17, 0.45)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
 
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center gap-3.5">
-                        <View className="h-14 w-14 rounded-2xl bg-accent items-center justify-center shadow-md shadow-accent/50">
-                          <Feather name="heart" size={26} color={theme.colors.text.dark} />
-                        </View>
-                        <View>
-                          <Text className="text-lg font-bold text-white">Liked Songs</Text>
-                          <Text className="text-xs text-text-muted mt-0.5">
-                            {recentTracks.length + 12} saved tracks
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View className="h-10 w-10 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50">
-                        <Feather name="play" size={16} color={theme.colors.text.dark} className="ml-0.5" />
-                      </View>
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-3.5">
+                    <View className="h-14 w-14 rounded-2xl bg-accent items-center justify-center">
+                      <Feather name="heart" size={26} color={theme.colors.text.dark} />
                     </View>
+                    <View>
+                      <Text className="text-lg font-bold text-white">Liked Songs</Text>
+                      <Text className="text-xs text-text-muted mt-0.5">
+                        {likedSongs.length === 0
+                          ? 'Tap heart on any song to save'
+                          : `${likedSongs.length} saved ${likedSongs.length === 1 ? 'track' : 'tracks'}`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={likedSongs.length === 0}
+                    onPress={() => playQueueAndNavigate(navigation, likedSongs, 0)}
+                    className={`h-10 w-10 rounded-full items-center justify-center ${
+                      likedSongs.length > 0 ? 'bg-accent' : 'bg-white/10'
+                    }`}
+                  >
+                    <Feather
+                      name="play"
+                      size={16}
+                      color={likedSongs.length > 0 ? theme.colors.text.dark : '#FFFFFF'}
+                    />
                   </TouchableOpacity>
                 </View>
-              )}
+              </TouchableOpacity>
+            </View>
+          )}
 
-              {/* Playlists Horizontal Row */}
-              {(activeFilter === 'All' || activeFilter === 'Playlists') && playlists.length > 0 && (
-                <View className="mb-6">
-                  <View className="px-5 mb-2.5 flex-row items-center justify-between">
-                    <Text className="text-base font-bold text-white">Saved Playlists</Text>
-                    <Text className="text-xs text-accent font-semibold">{playlists.length} collections</Text>
-                  </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerClassName="px-5 gap-3.5"
+          {/* Liked Songs List */}
+          {activeFilter === 'Liked' && (
+            <View className="mb-6">
+              {likedSongs.length === 0 ? (
+                <View className="mx-5 p-5 rounded-2xl border border-glass-border bg-glass-tint items-center">
+                  <Text className="text-sm font-semibold text-white mb-1">
+                    No Liked Songs Yet
+                  </Text>
+                  <Text className="text-xs text-text-muted text-center">
+                    Open the Player and tap the heart icon to build your favorites collection.
+                  </Text>
+                </View>
+              ) : (
+                likedSongs.map((song, idx) =>
+                  renderSongRow(song, likedSongs, idx, true),
+                )
+              )}
+            </View>
+          )}
+
+          {/* Your Custom Playlists */}
+          {(activeFilter === 'All' || activeFilter === 'Playlists') && (
+            <View className="mb-6">
+              <View className="px-5 mb-2.5 flex-row items-center justify-between">
+                <Text className="text-base font-bold text-white">Your Playlists</Text>
+                <TouchableOpacity onPress={openNewPlaylist}>
+                  <Text className="text-xs text-accent font-semibold">+ Create</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerClassName="px-5 gap-3.5"
+              >
+                {localPlaylists.map((pl) => (
+                  <TouchableOpacity
+                    key={pl.id}
+                    activeOpacity={0.85}
+                    onPress={() => openLocalPlaylist(pl)}
+                    className="w-36"
                   >
-                    {playlists.map((playlist) => (
-                      <TouchableOpacity
-                        key={playlist.id}
-                        activeOpacity={0.85}
-                        className="w-36"
-                      >
-                        <View className="w-36 h-36 rounded-2xl overflow-hidden border border-glass-border bg-glass-tint relative">
-                          <Image
-                            source={{ uri: playlist.image }}
-                            className="w-full h-full"
-                            resizeMode="cover"
-                          />
-                          <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50">
-                            <Feather name="music" size={14} color={theme.colors.text.dark} />
-                          </View>
-                        </View>
-                        <Text className="text-sm font-semibold text-white mt-2" numberOfLines={1}>
-                          {playlist.title}
-                        </Text>
-                        <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
-                          {playlist.subtitle}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
+                    <View className="w-36 h-36 rounded-2xl overflow-hidden border border-glass-border bg-glass-tint items-center justify-center relative">
+                      {pl.songs[0] ? (
+                        <Image
+                          source={{ uri: getSongArtwork(pl.songs[0]) }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Feather
+                          name="music"
+                          size={34}
+                          color={theme.colors.accent.DEFAULT}
+                        />
+                      )}
+                      <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center">
+                        <Feather name="play" size={14} color={theme.colors.text.dark} />
+                      </View>
+                    </View>
+                    <Text className="text-sm font-semibold text-white mt-2" numberOfLines={1}>
+                      {pl.name}
+                    </Text>
+                    <Text className="text-xs text-text-muted mt-0.5">
+                      {pl.songs.length} {pl.songs.length === 1 ? 'track' : 'tracks'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
 
-              {/* Recently Played / Saved Tracks */}
-              {(activeFilter === 'All' || activeFilter === 'Recent') && (
-                <View className="mb-4">
-                  <View className="px-5 mb-1.5 flex-row items-center justify-between">
-                    <Text className="text-base font-bold text-white">Recently Played</Text>
-                    <Text className="text-xs text-text-muted font-medium">Updated today</Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={openNewPlaylist}
+                  className="w-36 h-36 rounded-2xl border border-dashed border-accent/45 bg-accent/10 items-center justify-center p-3"
+                >
+                  <View className="h-11 w-11 rounded-full bg-accent/20 items-center justify-center mb-2">
+                    <Feather name="plus" size={22} color={theme.colors.accent.DEFAULT} />
                   </View>
+                  <Text className="text-xs font-bold text-accent text-center">
+                    Create Playlist
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          )}
 
-                  {recentTracks.map((song) => (
-                    <SongCard
-                      key={song.id}
-                      song={song}
-                      onPlay={handlePlaySong}
-                    />
-                  ))}
+          {/* Curated Collections (Tap to inspect & play real tracks) */}
+          {(activeFilter === 'All' || activeFilter === 'Playlists') && (
+            <View className="mb-6">
+              <View className="px-5 mb-2.5 flex-row items-center justify-between">
+                <Text className="text-base font-bold text-white">Curated For You</Text>
+                <Text className="text-xs text-text-muted">Tap to open</Text>
+              </View>
+
+              {isLoading && !refreshing ? (
+                <View className="py-8 items-center">
+                  <ActivityIndicator size="small" color={theme.colors.accent.DEFAULT} />
                 </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerClassName="px-5 gap-3.5"
+                >
+                  {curatedPlaylists.map((playlist) => (
+                    <TouchableOpacity
+                      key={playlist.id}
+                      activeOpacity={0.85}
+                      onPress={() => openCuratedPlaylist(playlist)}
+                      className="w-36"
+                    >
+                      <View className="w-36 h-36 rounded-2xl overflow-hidden border border-glass-border bg-glass-tint relative">
+                        <Image
+                          source={{ uri: playlist.image }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                        <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center">
+                          <Feather name="list" size={14} color={theme.colors.text.dark} />
+                        </View>
+                      </View>
+                      <Text
+                        className="text-sm font-semibold text-white mt-2"
+                        numberOfLines={1}
+                      >
+                        {playlist.title}
+                      </Text>
+                      <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
+                        {playlist.subtitle}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               )}
-            </>
+            </View>
+          )}
+
+          {/* Real Recently Played */}
+          {(activeFilter === 'All' || activeFilter === 'Recent') && (
+            <View className="mb-4">
+              <View className="px-5 mb-2.5 flex-row items-center justify-between">
+                <Text className="text-base font-bold text-white">Recently Played</Text>
+                {recentPlays.length > 0 && (
+                  <Text className="text-xs text-accent font-semibold">
+                    {recentPlays.length} tracks
+                  </Text>
+                )}
+              </View>
+
+              {recentPlays.length === 0 ? (
+                <View className="mx-5 p-5 rounded-2xl border border-glass-border bg-glass-tint flex-row items-center gap-3">
+                  <View className="h-10 w-10 rounded-xl bg-accent/15 items-center justify-center">
+                    <Feather name="clock" size={18} color={theme.colors.accent.DEFAULT} />
+                  </View>
+                  <Text className="text-xs text-text-muted flex-1">
+                    Songs you listen to will appear here automatically.
+                  </Text>
+                </View>
+              ) : (
+                recentPlays.map((song, idx) =>
+                  renderSongRow(song, recentPlays, idx, false),
+                )
+              )}
+            </View>
           )}
         </ScrollView>
       </SafeAreaView>
 
-      {/* Floating Glass Mini Player */}
-      <GlassMiniPlayer fallbackSong={currentSong || recentTracks[0]} />
+      <PlaylistDetailModal
+        playlist={syncedDetailPlaylist}
+        loading={detailLoading}
+        onClose={() => setDetailPlaylist(null)}
+        onPlayAll={(songs, startIndex) =>
+          playQueueAndNavigate(navigation, songs, startIndex)
+        }
+        onRemoveSong={removeSongFromPlaylist}
+        onDeletePlaylist={deletePlaylist}
+        onSaveCuratedPlaylist={handleSaveCuratedPlaylist}
+      />
+
+      <GlassMiniPlayer fallbackSong={currentSong || recentPlays[0] || likedSongs[0]} />
     </View>
   );
 }

@@ -37,15 +37,31 @@ export interface PlayCountEntry {
   lastPlayedAt: number;
 }
 
+export interface UserPlaylist {
+  id: string;
+  name: string;
+  songs: Song[];
+  createdAt: number;
+}
+
 export interface ListeningStoreState {
   likedSongs: Song[];
   recentPlays: Song[];
+  playlists: UserPlaylist[];
   playCounts: Record<string, PlayCountEntry>;
   artistPlayCounts: Record<string, number>;
   totalListeningSeconds: number;
+  playlistModalVisible: boolean;
+  playlistModalSong: Song | null;
 
   toggleLikeSong: (song: Song) => void;
   recordPlay: (song: Song) => void;
+  createPlaylist: (name: string, initialSong?: Song) => UserPlaylist;
+  deletePlaylist: (playlistId: string) => void;
+  addSongToPlaylist: (playlistId: string, song: Song) => void;
+  removeSongFromPlaylist: (playlistId: string, songId: string) => void;
+  openPlaylistModal: (song?: Song | null) => void;
+  closePlaylistModal: () => void;
   clearHistory: () => void;
   clearAllListeningData: () => void;
 }
@@ -55,9 +71,12 @@ export const useListeningStore = create<ListeningStoreState>()(
     (set, get) => ({
       likedSongs: [],
       recentPlays: [],
+      playlists: [],
       playCounts: {},
       artistPlayCounts: {},
       totalListeningSeconds: 0,
+      playlistModalVisible: false,
+      playlistModalSong: null,
 
       toggleLikeSong: (song: Song) => {
         const { likedSongs } = get();
@@ -110,6 +129,49 @@ export const useListeningStore = create<ListeningStoreState>()(
         });
       },
 
+      createPlaylist: (name: string, initialSong?: Song) => {
+        const trimmed = name.trim() || 'Untitled Playlist';
+        const newPlaylist: UserPlaylist = {
+          id: `pl_${Date.now()}`,
+          name: trimmed,
+          songs: initialSong ? [initialSong] : [],
+          createdAt: Date.now(),
+        };
+        set((state) => ({
+          playlists: [newPlaylist, ...state.playlists],
+        }));
+        return newPlaylist;
+      },
+
+      deletePlaylist: (playlistId: string) =>
+        set((state) => ({
+          playlists: state.playlists.filter((p) => p.id !== playlistId),
+        })),
+
+      addSongToPlaylist: (playlistId: string, song: Song) =>
+        set((state) => ({
+          playlists: state.playlists.map((p) => {
+            if (p.id !== playlistId) return p;
+            if (p.songs.some((s) => s.id === song.id)) return p;
+            return { ...p, songs: [song, ...p.songs] };
+          }),
+        })),
+
+      removeSongFromPlaylist: (playlistId: string, songId: string) =>
+        set((state) => ({
+          playlists: state.playlists.map((p) =>
+            p.id === playlistId
+              ? { ...p, songs: p.songs.filter((s) => s.id !== songId) }
+              : p,
+          ),
+        })),
+
+      openPlaylistModal: (song = null) =>
+        set({ playlistModalVisible: true, playlistModalSong: song }),
+
+      closePlaylistModal: () =>
+        set({ playlistModalVisible: false, playlistModalSong: null }),
+
       clearHistory: () =>
         set({
           recentPlays: [],
@@ -130,6 +192,14 @@ export const useListeningStore = create<ListeningStoreState>()(
     {
       name: 'pulsebeat-listening-stats',
       storage: createJSONStorage(() => safeAsyncStorage),
+      partialize: (state) => ({
+        likedSongs: state.likedSongs,
+        recentPlays: state.recentPlays,
+        playlists: state.playlists,
+        playCounts: state.playCounts,
+        artistPlayCounts: state.artistPlayCounts,
+        totalListeningSeconds: state.totalListeningSeconds,
+      }),
     },
   ),
 );

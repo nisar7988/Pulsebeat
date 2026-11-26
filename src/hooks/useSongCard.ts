@@ -8,7 +8,7 @@ import {
   navigateAndPlaySong,
 } from '../service/player';
 import { RootStackParamList } from '../navigation/types';
-import { useCurrentSongStore } from '../store';
+import { useCurrentSongStore, useListeningStore } from '../store';
 
 export interface BaseSongCardProps {
   song: Song;
@@ -34,11 +34,16 @@ export function useSongCard({ song, onPlay }: BaseSongCardProps) {
     navigateAndPlaySong(navigation, song);
   }, [navigation, onPlay, song]);
 
+  const handleAddToPlaylist = useCallback(() => {
+    useListeningStore.getState().openPlaylistModal(song);
+  }, [song]);
+
   return {
     isCurrentSong,
     isPlayingCurrent,
     imageUrl,
     artistName,
     handlePlay,
+    handleAddToPlaylist,
   };
 }

@@ -10,8 +10,14 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(
   song,
   onPlay,
 }) => {
-  const { isCurrentSong, isPlayingCurrent, imageUrl, artistName, handlePlay } =
-    useSongCard({ song, onPlay });
+  const {
+    isCurrentSong,
+    isPlayingCurrent,
+    imageUrl,
+    artistName,
+    handlePlay,
+    handleAddToPlaylist,
+  } = useSongCard({ song, onPlay });
 
   return (
     <TouchableOpacity
@@ -33,6 +39,15 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(
             <Feather name="volume-2" size={24} color={theme.colors.accent.DEFAULT} />
           </View>
         )}
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleAddToPlaylist}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/60 border border-white/20 items-center justify-center"
+        >
+          <Feather name="plus" size={14} color="#FFFFFF" />
+        </TouchableOpacity>
 
         <View className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50">
           <Feather

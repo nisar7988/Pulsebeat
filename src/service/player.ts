@@ -189,6 +189,65 @@ export const navigateAndPlaySong = (navigation: any, song: Song) => {
   });
 };
 
+/**
+ * Loads a list of songs into TrackPlayer and navigates to PlayerScreen.
+ */
+export const playQueueAndNavigate = (
+  navigation: any,
+  songs: Song[],
+  startIndex = 0,
+) => {
+  if (!songs.length) return;
+  const safeIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
+  const targetSong = songs[safeIndex];
+
+  const parent = navigation.getParent?.();
+  if (parent) {
+    parent.navigate('Player', { song: targetSong });
+  } else {
+    navigation.navigate('Player', { song: targetSong });
+  }
+
+  requestAnimationFrame(() => {
+    setTimeout(async () => {
+      try {
+        useCurrentSongStore.getState().setCurrentSong(targetSong);
+        await initializePlayer();
+        const quality = useUserStore.getState().audioQuality;
+        const tracks = songs
+          .map((s) => {
+            const url = pickAudioUrlByQuality(s.downloadUrl || [], quality);
+            if (!url) return null;
+            return {
+              id: s.id,
+              url,
+              title: s.name,
+              artist: getSongArtistName(s),
+              artwork: getSongArtwork(s),
+            };
+          })
+          .filter((t): t is NonNullable<typeof t> => t !== null);
+
+        if (!tracks.length) {
+          await playSong(targetSong);
+          return;
+        }
+
+        await TrackPlayer.reset();
+        await TrackPlayer.add(tracks);
+        const targetTrackIdx = tracks.findIndex((t) => t.id === targetSong.id);
+        if (targetTrackIdx > 0) {
+          await TrackPlayer.skip(targetTrackIdx);
+        }
+        await TrackPlayer.play();
+        useListeningStore.getState().recordPlay(targetSong);
+      } catch (err) {
+        console.log('Error playing queue:', err);
+      }
+    }, 50);
+  });
+};
+
 export const pauseSong = async () => {
   try {
     await initializePlayer();
