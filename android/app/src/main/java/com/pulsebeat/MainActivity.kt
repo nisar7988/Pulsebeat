@@ -1,7 +1,7 @@
 package com.pulsebeat
 import expo.modules.ReactActivityDelegateWrapper
 import android.os.Bundle
-import com.swmansion.rnscreens.fragment.restoration.RNScreensFragmentFactor
+import com.swmansion.rnscreens.fragment.restoration.RNScreensFragmentFactory
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled

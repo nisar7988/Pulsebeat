@@ -117,3 +117,43 @@ if (fs.existsSync(cssInteropFile)) {
     console.log('[patch-expo] Patched react-native-css-interop stringify for safe context inspection');
   }
 }
+
+// Fix react-native-track-player null safety in MusicModule.kt for React Native 0.88
+const rntpModuleFile = path.join(
+  __dirname,
+  '../node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt'
+);
+
+if (fs.existsSync(rntpModuleFile)) {
+  let rntpContent = fs.readFileSync(rntpModuleFile, 'utf8');
+  let changed = false;
+
+  const oldGetTrack = 'callback.resolve(Arguments.fromBundle(musicService.tracks[index].originalItem))';
+  const newGetTrack = 'val item = musicService.tracks[index].originalItem\n            callback.resolve(item?.let { Arguments.fromBundle(it) })';
+
+  const oldGetActiveTrack = `        callback.resolve(
+            if (musicService.tracks.isEmpty()) null
+            else Arguments.fromBundle(
+                musicService.tracks[musicService.getCurrentTrackIndex()].originalItem
+            )
+        )`;
+  const newGetActiveTrack = `        callback.resolve(
+            if (musicService.tracks.isEmpty()) null
+            else musicService.tracks[musicService.getCurrentTrackIndex()].originalItem?.let { Arguments.fromBundle(it) }
+        )`;
+
+  if (rntpContent.includes(oldGetTrack)) {
+    rntpContent = rntpContent.replace(oldGetTrack, newGetTrack);
+    changed = true;
+  }
+  if (rntpContent.includes(oldGetActiveTrack)) {
+    rntpContent = rntpContent.replace(oldGetActiveTrack, newGetActiveTrack);
+    changed = true;
+  }
+
+  if (changed) {
+    fs.writeFileSync(rntpModuleFile, rntpContent, 'utf8');
+    console.log('[patch-expo] Patched react-native-track-player MusicModule.kt null safety');
+  }
+}
+

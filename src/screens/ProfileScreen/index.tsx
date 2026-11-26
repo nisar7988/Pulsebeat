@@ -122,7 +122,7 @@ export default function ProfileScreen() {
                 <View className="h-20 w-20 rounded-2xl p-0.5 border-2 border-accent shadow-lg shadow-accent/60 overflow-hidden bg-background">
                   <Image
                     source={{
-                      uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+                      uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHmW_RbpBSeQbez1ubni6PzyPMMhrhPEsJO-pKxs_fTw&s=10',
                     }}
                     className="h-full w-full rounded-2xl"
                     resizeMode="cover"
