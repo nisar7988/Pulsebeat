@@ -29,37 +29,19 @@ import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 const { width: W } = Dimensions.get('window');
 const PANEL_H = 340;
 
-const NowPlayingScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteProp<RootStackParamList, 'Player'>>();
-  const song = route.params?.song;
-  const activeTrack = useActiveTrack();
-  const { playing } = useIsPlaying();
-  const currentSong = useCurrentSongStore((state) => state.currentSong);
-  const activeSong = song || currentSong;
+interface PlayerProgressProps {
+  isPlaying: boolean;
+  trackColor: string;
+  progressColor: string;
+  dotColor: string;
+}
 
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [liked, setLiked] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
-
-  // Sync isPlaying state with TrackPlayer
-  useEffect(() => {
-    if (typeof playing === 'boolean') {
-      setIsPlaying(playing);
-    }
-  }, [playing]);
-
-  // Ensure activeSong plays if TrackPlayer is not already playing this song
-  useEffect(() => {
-    if (activeSong && activeTrack?.id !== activeSong.id) {
-      playSong(activeSong).catch((err: any) =>
-        console.log('PlayerScreen playSong error:', err),
-      );
-    }
-  }, [activeSong, activeTrack?.id]);
-
-  // Real progress from TrackPlayer with smooth simulated fallback & scrub support
+const PlayerProgress: React.FC<PlayerProgressProps> = React.memo(({
+  isPlaying,
+  trackColor,
+  progressColor,
+  dotColor,
+}) => {
   const { position, duration } = useProgress(250);
   const [simulatedProgress, setSimulatedProgress] = useState(0.2);
   const [isSeeking, setIsSeeking] = useState(false);
@@ -67,7 +49,7 @@ const NowPlayingScreen = () => {
 
   useEffect(() => {
     if (!isPlaying || duration > 0 || isSeeking) return;
-    const id = setInterval(() => setSimulatedProgress(p => (p >= 1 ? 0 : p + 0.004)), 1000);
+    const id = setInterval(() => setSimulatedProgress((p) => (p >= 1 ? 0 : p + 0.004)), 1000);
     return () => clearInterval(id);
   }, [isPlaying, duration, isSeeking]);
 
@@ -92,6 +74,51 @@ const NowPlayingScreen = () => {
     setIsSeeking(true);
     setSeekProgress(ratio);
   };
+
+  return (
+    <ProgressBar
+      progress={progress}
+      width={W}
+      trackColor={trackColor}
+      progressColor={progressColor}
+      dotColor={dotColor}
+      onSeek={handleSeek}
+      onScrub={handleScrub}
+    />
+  );
+});
+
+const NowPlayingScreen = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Player'>>();
+  const song = route.params?.song;
+  const activeTrack = useActiveTrack();
+  const { playing } = useIsPlaying();
+  const currentSong = useCurrentSongStore((state) => state.currentSong);
+  const activeSong = song || currentSong;
+
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [liked, setLiked] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
+
+  // Sync isPlaying state with TrackPlayer
+  useEffect(() => {
+    if (typeof playing === 'boolean') {
+      setIsPlaying(playing);
+    }
+  }, [playing]);
+
+  // Ensure activeSong plays if TrackPlayer is not already playing this song
+  useEffect(() => {
+    if (!activeSong || activeTrack?.id === activeSong.id) return;
+    const timer = setTimeout(() => {
+      playSong(activeSong).catch((err: any) =>
+        console.log('PlayerScreen playSong error:', err),
+      );
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [activeSong, activeTrack?.id]);
 
   // Prioritize activeSong so UI immediately updates to clicked song without waiting for TrackPlayer native bridge
   const title = activeSong?.name || activeTrack?.title || 'Midnight Dreams';
@@ -154,14 +181,11 @@ const NowPlayingScreen = () => {
         }}
       >
         {/* Arc progress */}
-        <ProgressBar
-          progress={progress}
-          width={W}
+        <PlayerProgress
+          isPlaying={isPlaying}
           trackColor={songTheme.trackColor}
           progressColor={songTheme.progressColor}
           dotColor={songTheme.dotColor}
-          onSeek={handleSeek}
-          onScrub={handleScrub}
         />
 
         {/* Player controls */}
@@ -179,9 +203,9 @@ const NowPlayingScreen = () => {
           onTogglePlayback={togglePlayback}
           onPrevious={skipToPreviousSong}
           onNext={skipToNextSong}
-          onToggleLike={() => setLiked(prev => !prev)}
-          onToggleShuffle={() => setIsShuffle(prev => !prev)}
-          onToggleRepeat={() => setIsRepeat(prev => !prev)}
+          onToggleLike={() => setLiked((prev) => !prev)}
+          onToggleShuffle={() => setIsShuffle((prev) => !prev)}
+          onToggleRepeat={() => setIsRepeat((prev) => !prev)}
         />
       </LinearGradient>
     </View>

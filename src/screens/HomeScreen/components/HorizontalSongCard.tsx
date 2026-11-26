@@ -6,7 +6,7 @@ import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
 
 export type HorizontalSongCardProps = BaseSongCardProps;
 
-export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = ({
+export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(({
   song,
   onPlay,
 }) => {
@@ -57,6 +57,6 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = ({
       </Text>
     </TouchableOpacity>
   );
-};
+});
 
 export default HorizontalSongCard;

@@ -21,7 +21,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { theme } from '../../theme';
 import { Song } from '../../types/song';
 import { getSongBySearch, getSongsByLanguage } from '../../service/music';
-import { playSong } from '../../service/player';
+import { navigateAndPlaySong } from '../../service/player';
 import { useUserStore } from '../../store';
 import { RootStackParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
@@ -221,18 +221,7 @@ const SearchScreen = () => {
       console.log('Error adding recent search:', e);
     }
 
-    // Navigate to Player immediately so screen transitions with 0 latency
-    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
-    if (parent) {
-      parent.navigate('Player', { song });
-    } else {
-      (navigation as any).navigate('Player', { song });
-    }
-
-    // Start background playback asynchronously without blocking the UI
-    playSong(song).catch((e) => {
-      console.log('Error playing song:', e);
-    });
+    navigateAndPlaySong(navigation, song);
   };
 
   const displayList = useMemo(() => {

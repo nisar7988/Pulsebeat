@@ -6,7 +6,7 @@ import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
 
 export type SongCardProps = BaseSongCardProps;
 
-export const SongCard: React.FC<SongCardProps> = ({
+export const SongCard: React.FC<SongCardProps> = React.memo(({
   song,
   onPlay,
 }) => {
@@ -55,6 +55,6 @@ const songName = song.name.length>10 ? song.name.slice(0,15) + "..." : song.name
    
     </TouchableOpacity>
   );
-};
+});
 
 export default SongCard;

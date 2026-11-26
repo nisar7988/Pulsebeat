@@ -22,7 +22,7 @@ import {
 } from '../../service/music';
 import { Song } from '../../types/song';
 import { useUserStore, useCurrentSongStore } from '../../store';
-import { playSong } from '../../service/player';
+import { navigateAndPlaySong } from '../../service/player';
 import {
   HomeHeader,
   SectionHeader,
@@ -65,21 +65,12 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Unified method to play a song and navigate to Player screen
-   const handlePlaySong = (song: Song) => {
-    // 1. Immediately navigate to Player screen
-    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
-    if (parent) {
-      parent.navigate('Player', { song });
-    } else {
-      (navigation as any).navigate('Player', { song });
-    }
-
-    // 2. Play song asynchronously without blocking UI transition
-    useCurrentSongStore.getState().setCurrentSong(song);
-    playSong(song).catch((e) => {
-      console.log('Error playing song:', e);
-    });
-  };
+  const handlePlaySong = useCallback(
+    (song: Song) => {
+      navigateAndPlaySong(navigation, song);
+    },
+    [navigation],
+  );
 
   // Load artists details/avatars
   useEffect(() => {

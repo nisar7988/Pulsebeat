@@ -151,10 +151,13 @@ export function useSongTheme(imageUrl: string | undefined): PlayerTheme {
       }
     };
 
-    extractColors();
+    const timer = setTimeout(() => {
+      extractColors();
+    }, 150);
 
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, [imageUrl]);
 

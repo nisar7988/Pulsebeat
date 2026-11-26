@@ -18,7 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { theme } from '../../theme';
 import { Song } from '../../types/song';
-import { playSong } from '../../service/player';
+import { navigateAndPlaySong } from '../../service/player';
 import { getPlaylistBySearch, getSongsByGenre } from '../../service/music';
 import { useCurrentSongStore, useUserStore } from '../../store';
 import { AppTabParamList, RootStackParamList } from '../../navigation/types';
@@ -47,17 +47,7 @@ export default function LibraryScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const handlePlaySong = (song: Song) => {
-    const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
-    if (parent) {
-      parent.navigate('Player', { song });
-    } else {
-      (navigation as any).navigate('Player', { song });
-    }
-
-    useCurrentSongStore.getState().setCurrentSong(song);
-    playSong(song).catch((e) => {
-      console.log('Error playing song from Library:', e);
-    });
+    navigateAndPlaySong(navigation, song);
   };
 
   const loadLibraryContent = useCallback(async () => {

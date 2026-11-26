@@ -36,6 +36,8 @@ const safeAsyncStorage = {
 export interface CurrentSongStore {
   currentSong: Song | null;
   setCurrentSong: (song: Song | null) => void;
+  isPlaying: boolean;
+  setIsPlaying: (playing: boolean) => void;
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
 }
@@ -47,6 +49,10 @@ export const useCurrentSongStore = create<CurrentSongStore>()(
 
       setCurrentSong: (song) => set({ currentSong: song }),
 
+      isPlaying: false,
+
+      setIsPlaying: (isPlaying) => set({ isPlaying }),
+
       _hasHydrated: false,
 
       setHasHydrated: (state) => set({ _hasHydrated: state }),
@@ -54,6 +60,7 @@ export const useCurrentSongStore = create<CurrentSongStore>()(
     {
       name: 'song-storage',
       storage: createJSONStorage(() => safeAsyncStorage),
+      partialize: (state) => ({ currentSong: state.currentSong }),
 
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Image,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -132,13 +133,19 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = ({
   return (
     <View className="absolute bottom-[92px] left-4 right-4 z-30 overflow-hidden rounded-2xl border border-glass-border">
       {/* Glass Frost Background */}
-      <BlurView
-        style={StyleSheet.absoluteFill}
-        blurType="light"
-        blurAmount={25}
-        overlayColor="transparent"
-        reducedTransparencyFallbackColor={theme.colors.glass.fallback}
-      />
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          blurType="light"
+          blurAmount={25}
+          overlayColor="transparent"
+          reducedTransparencyFallbackColor={theme.colors.glass.fallback}
+        />
+      ) : (
+        <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(16, 28, 13, 0.92)' }]}
+        />
+      )}
       <View className="absolute inset-0 bg-glass-tint" />
       <LinearGradient
         colors={['rgba(255, 255, 255, 0.16)', 'rgba(255, 255, 255, 0.04)']}

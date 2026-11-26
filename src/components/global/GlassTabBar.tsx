@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, LayoutRectangle, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, LayoutRectangle, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from '@react-native-community/blur';
 import Feather from 'react-native-vector-icons/Feather';
@@ -34,13 +34,19 @@ const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
   return (
     <View className="absolute bottom-6 left-0 right-0 items-center" pointerEvents="box-none">
       <View className="flex-row rounded-[36px] overflow-hidden border border-glass-border p-2 gap-2.5">
-        <BlurView
-          style={StyleSheet.absoluteFill}
-          blurType="light"
-          blurAmount={25}
-          overlayColor="transparent"
-          reducedTransparencyFallbackColor={theme.colors.glass.fallback}
-        />
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            style={StyleSheet.absoluteFill}
+            blurType="light"
+            blurAmount={25}
+            overlayColor="transparent"
+            reducedTransparencyFallbackColor={theme.colors.glass.fallback}
+          />
+        ) : (
+          <View
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(16, 28, 13, 0.92)' }]}
+          />
+        )}
         <View className="absolute inset-0 bg-glass-tint" />
 
         {/* sliding indicator */}

@@ -1,9 +1,21 @@
-import TrackPlayer, { Capability, State } from 'react-native-track-player';
+import TrackPlayer, { Capability, Event, State } from 'react-native-track-player';
 import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
 
 let isPlayerInitialized = false;
 let isInitializing = false;
+let playbackListenerRegistered = false;
+let inFlightSongId: string | null = null;
+
+function registerPlaybackStateSync() {
+  if (playbackListenerRegistered) return;
+  playbackListenerRegistered = true;
+  TrackPlayer.addEventListener(Event.PlaybackState, (event) => {
+    const playing =
+      event.state === State.Playing || event.state === State.Buffering;
+    useCurrentSongStore.getState().setIsPlaying(playing);
+  });
+}
 
 export const initializePlayer = async () => {
   if (isPlayerInitialized) return;
@@ -22,12 +34,14 @@ export const initializePlayer = async () => {
       ],
       compactCapabilities: [Capability.Play, Capability.Pause],
     });
+    registerPlaybackStateSync();
     isPlayerInitialized = true;
   } catch (error: any) {
     if (
       error?.message?.includes('already been initialized') ||
       String(error).includes('already')
     ) {
+      registerPlaybackStateSync();
       isPlayerInitialized = true;
     } else {
       console.log('Player initialization error:', error);
@@ -59,6 +73,12 @@ export const getSongArtwork = (song?: Song | null): string => {
 };
 
 export const playSong = async (song?: Song) => {
+  const targetId = song?.id ?? useCurrentSongStore.getState().currentSong?.id;
+  if (targetId && inFlightSongId === targetId) {
+    return;
+  }
+  inFlightSongId = targetId ?? null;
+
   try {
     if (song) {
       useCurrentSongStore.getState().setCurrentSong(song);
@@ -119,7 +139,33 @@ export const playSong = async (song?: Song) => {
     }
   } catch (err) {
     console.log('Error in playSong:', err);
+  } finally {
+    if (inFlightSongId === targetId) {
+      inFlightSongId = null;
+    }
   }
+};
+
+/**
+ * Navigates to the Player screen immediately and defers store/native playback
+ * until the transition animation finishes so navigation stays responsive.
+ */
+export const navigateAndPlaySong = (navigation: any, song: Song) => {
+  const parent = navigation.getParent?.();
+  if (parent) {
+    parent.navigate('Player', { song });
+  } else {
+    navigation.navigate('Player', { song });
+  }
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      useCurrentSongStore.getState().setCurrentSong(song);
+      playSong(song).catch((err) => {
+        console.log('Error playing song:', err);
+      });
+    }, 50);
+  });
 };
 
 export const pauseSong = async () => {
