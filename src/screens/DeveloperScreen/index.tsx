@@ -30,10 +30,11 @@ import { theme } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import { useUserStore } from '../../store';
+import MUSIC_API from '../../config/api';
 
-const NTFY_SHOUTOUT_URL = 'https://ntfy.sh/pulsebeat-nisar7988-kudos';
+const NTFY_SHOUTOUT_URL = MUSIC_API.shoutout;
 const SHOUTOUT_STORAGE_KEY = 'pulsebeat-developer-shoutout-sent';
-const GITHUB_REPO_API = 'https://api.github.com/repos/nisar7988/Pulsebeat';
+const GITHUB_REPO_API = MUSIC_API.githubRepo;
 
 const DEVELOPER = {
   name: 'Nisar Ahmed',
@@ -85,14 +86,16 @@ export default function DeveloperScreen() {
       })
       .catch(() => {});
 
-    fetch(GITHUB_REPO_API)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (typeof data?.stargazers_count === 'number') {
-          setStarCount(data.stargazers_count);
-        }
-      })
-      .catch(() => {});
+    if (GITHUB_REPO_API) {
+      fetch(GITHUB_REPO_API)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (typeof data?.stargazers_count === 'number') {
+            setStarCount(data.stargazers_count);
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -125,6 +128,13 @@ export default function DeveloperScreen() {
 
   const handleDropShoutout = useCallback(async () => {
     if (shoutoutSent || sendingShoutout) return;
+    if (!NTFY_SHOUTOUT_URL) {
+      Alert.alert(
+        'Shoutout Unavailable',
+        'Shoutout endpoint is not configured in environment settings.',
+      );
+      return;
+    }
     setSendingShoutout(true);
     try {
       const sender = `${profileName || 'PulseBeat Listener'} (${profileHandle || '@pulsebeat'})`;

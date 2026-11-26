@@ -12,7 +12,7 @@ import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
 import { useUserStore, AudioQuality } from '../store/useUserStore';
 import { useListeningStore } from '../store/useListeningStore';
-import { getSongSuggestions } from './music';
+import { getSongDetails, getSongSuggestions } from './music';
 import { syncPlaybackWidget } from './widgetSync';
 
 let isPlayerInitialized = false;
@@ -276,10 +276,7 @@ export const playSong = async (song?: Song) => {
     // Fallback: fetch song details if downloadUrl is missing or empty
     if (!audioUrl && currentSong.id) {
       try {
-        const res = await fetch(
-          `https://saavn.bycomsolutions.com/api/songs/${encodeURIComponent(currentSong.id)}`,
-        );
-        const data = await res.json();
+        const data = await getSongDetails(currentSong.id);
         const songDetail = data?.data?.[0];
         if (songDetail?.downloadUrl?.length) {
           audioUrl = pickAudioUrlByQuality(songDetail.downloadUrl, quality);

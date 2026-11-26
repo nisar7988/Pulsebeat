@@ -125,6 +125,7 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [feedError, setFeedError] = useState(false);
+  const [usingCachedFeed, setUsingCachedFeed] = useState(false);
 
   // In-memory caches to make switching tabs/pills instant
   const languageCache = useRef<Map<string, Song[]>>(new Map());
@@ -196,6 +197,7 @@ export default function HomeScreen() {
       setFeedError(false);
       const res = await getSongsByLanguage(lang);
       const songs = dedupeSongs(res?.data?.results ?? []);
+      setUsingCachedFeed(Boolean(res?._fromCache));
       languageCache.current.set(lang, songs);
       setTrendingSongs(songs);
     } catch (e) {
@@ -375,6 +377,22 @@ export default function HomeScreen() {
           onOpenSearch={() => navigation.navigate('Search')}
         />
 
+        {usingCachedFeed && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onRefresh}
+            className="mx-5 mt-1 mb-1 px-3.5 py-2 rounded-2xl border border-accent/35 bg-accent/10 flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center gap-2 flex-1 pr-2">
+              <Feather name="wifi-off" size={14} color={theme.colors.accent.DEFAULT} />
+              <Text className="text-xs font-medium text-white/85" numberOfLines={1}>
+                Showing offline cached feed
+              </Text>
+            </View>
+            <Text className="text-xs font-bold text-accent">Retry</Text>
+          </TouchableOpacity>
+        )}
+
         {isLoading && !refreshing ? (
           <View className="py-20 items-center justify-center">
             <ActivityIndicator size="large" color={theme.colors.accent.DEFAULT} />
@@ -553,6 +571,7 @@ export default function HomeScreen() {
       genreSongs,
       isLoading,
       navigation,
+      onRefresh,
       openArtistSongsPage,
       openArtistsPage,
       refreshing,
@@ -560,6 +579,7 @@ export default function HomeScreen() {
       renderHorizontalSong,
       userGenres,
       userLanguages,
+      usingCachedFeed,
       visibleArtistSongs,
       visibleArtists,
     ],
