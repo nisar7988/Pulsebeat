@@ -17,34 +17,34 @@ export const getGlobalSearch = async (query: string) => {
 };
 
 // Search Songs
-export const getSongBySearch = async (songName: string) => {
+export const getSongBySearch = async (songName: string, page = 1, limit = 20) => {
   const response = await fetch(
     MUSIC_API.searchSongs
       .replace("{songName}", encodeURIComponent(songName))
-      .replace("{page}", "1")
-      .replace("{limit}", "20"),
+      .replace("{page}", String(page))
+      .replace("{limit}", String(limit)),
   );
   return await response.json();
 };
 
 // Search Albums
-export const getAlbumBySearch = async (albumName: string) => {
+export const getAlbumBySearch = async (albumName: string, page = 1, limit = 20) => {
   const response = await fetch(
     MUSIC_API.searchAlbums
       .replace("{albumName}", encodeURIComponent(albumName))
-      .replace("{page}", "1")
-      .replace("{limit}", "20"),
+      .replace("{page}", String(page))
+      .replace("{limit}", String(limit)),
   );
   return await response.json();
 };
 
 // Search Artists
-export const getArtistBySearch = async (artistName: string) => {
+export const getArtistBySearch = async (artistName: string, page = 1, limit = 20) => {
   const response = await fetch(
     MUSIC_API.searchArtists
       .replace("{artistName}", encodeURIComponent(artistName))
-      .replace("{page}", "1")
-      .replace("{limit}", "20"),
+      .replace("{page}", String(page))
+      .replace("{limit}", String(limit)),
   );
   return await response.json();
 };
@@ -59,17 +59,18 @@ export interface ApiArtist {
 
 // Fetch popular artists from API based on preferred languages or global seeds
 export const getPopularArtists = async (languages: string[] = []): Promise<ApiArtist[]> => {
+  const lowerLanguages = languages.map((l) => l.toLowerCase());
   const seeds: string[] = [];
-  if (languages.includes('punjabi')) {
+  if (lowerLanguages.includes('punjabi')) {
     seeds.push('Diljit Dosanjh', 'Sidhu Moose Wala', 'Karan Aujla', 'AP Dhillon');
   }
-  if (languages.includes('hindi')) {
+  if (lowerLanguages.includes('hindi')) {
     seeds.push('Arijit Singh', 'Shreya Ghoshal', 'Atif Aslam', 'Badshah');
   }
-  if (languages.includes('spanish')) {
+  if (lowerLanguages.includes('spanish')) {
     seeds.push('Bad Bunny', 'Rosalia', 'J Balvin');
   }
-  if (languages.includes('korean')) {
+  if (lowerLanguages.includes('korean')) {
     seeds.push('BTS', 'BLACKPINK');
   }
   seeds.push(
@@ -141,12 +142,12 @@ export const searchArtistsForOnboarding = async (query: string): Promise<ApiArti
 };
 
 // Search Playlists
-export const getPlaylistBySearch = async (playlistName: string) => {
+export const getPlaylistBySearch = async (playlistName: string, page = 1, limit = 20) => {
   const response = await fetch(
     MUSIC_API.searchPlaylists
       .replace("{playlistName}", encodeURIComponent(playlistName))
-      .replace("{page}", "1")
-      .replace("{limit}", "20"),
+      .replace("{page}", String(page))
+      .replace("{limit}", String(limit)),
   );
   return await response.json();
 };
@@ -225,10 +226,83 @@ export const getSongSuggestions = async (songId: string) => {
   return await response.json();
 };
 
-// Lyrics
-export const getSongLyrics = async (songId: string) => {
-  const response = await fetch(
-    MUSIC_API.lyrics.replace("{songId}", encodeURIComponent(songId)),
+export interface LyricsResult {
+  plainLyrics: string | null;
+  syncedLyrics: string | null;
+}
+
+interface LrcLibItem {
+  duration?: number;
+  instrumental?: boolean;
+  plainLyrics?: string | null;
+  syncedLyrics?: string | null;
+}
+
+// Lyrics via LRCLIB (saavn.bycomsolutions.com /api/lyrics returns 404)
+export const getSongLyrics = async (
+  _songId: string,
+  meta?: { title?: string; artist?: string; duration?: number },
+): Promise<LyricsResult> => {
+  const cleanTitle = (meta?.title || '')
+    .replace(/\s*[[(].*?[\])]\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleanTitle) {
+    return { plainLyrics: null, syncedLyrics: null };
+  }
+
+  const artistParts = (meta?.artist || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s && s.toLowerCase() !== 'unknown artist');
+
+  const candidates: LrcLibItem[] = [];
+  const fetchList = async (params: Record<string, string>) => {
+    const qs = Object.entries(params)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('&');
+    const res = await fetch(`${MUSIC_API.lyrics}?${qs}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? (data as LrcLibItem[]) : [];
+  };
+
+  for (const artist of artistParts.slice(0, 2)) {
+    const list = await fetchList({ track_name: cleanTitle, artist_name: artist });
+    candidates.push(...list);
+    if (candidates.some((c) => !c.instrumental && (c.syncedLyrics || c.plainLyrics))) {
+      break;
+    }
+  }
+
+  if (!candidates.some((c) => !c.instrumental && (c.syncedLyrics || c.plainLyrics))) {
+    const fallbackQuery = artistParts[0] ? `${cleanTitle} ${artistParts[0]}` : cleanTitle;
+    const list = await fetchList({ q: fallbackQuery });
+    candidates.push(...list);
+  }
+
+  const playable = candidates.filter(
+    (c) => !c.instrumental && (c.syncedLyrics || c.plainLyrics),
   );
-  return await response.json();
+  if (!playable.length) {
+    return { plainLyrics: null, syncedLyrics: null };
+  }
+
+  const targetDuration = meta?.duration || 0;
+  playable.sort((a, b) => {
+    const aHasSync = a.syncedLyrics ? 0 : 1;
+    const bHasSync = b.syncedLyrics ? 0 : 1;
+    if (aHasSync !== bHasSync) return aHasSync - bHasSync;
+    if (targetDuration > 0 && a.duration && b.duration) {
+      return Math.abs(a.duration - targetDuration) - Math.abs(b.duration - targetDuration);
+    }
+    return 0;
+  });
+
+  const best = playable[0];
+  return {
+    plainLyrics: best.plainLyrics?.trim() || null,
+    syncedLyrics: best.syncedLyrics?.trim() || null,
+  };
 };

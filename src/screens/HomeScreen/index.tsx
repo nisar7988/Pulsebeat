@@ -40,7 +40,8 @@ const keyExtractorArtist = (item: ApiArtist) => item.id;
 
 export default function HomeScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
-  const { selectedLanguages, selectedGenres, selectedArtists } = useUserStore();
+  const { selectedLanguages, selectedGenres, selectedArtists, artistNames } =
+    useUserStore();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
 
   const userLanguages = useMemo(
@@ -55,16 +56,47 @@ export default function HomeScreen() {
   // Active filters
   const [activeLanguage, setActiveLanguage] = useState(userLanguages[0]);
   const [activeGenre, setActiveGenre] = useState(userGenres[0]);
-  const [activeArtist, setActiveArtist] = useState<string>(selectedArtists[0] || 'Arijit Singh');
+  const [activeArtist, setActiveArtist] = useState<string>(
+    selectedArtists[0] || 'Arijit Singh',
+  );
+
+  // Sync active filters if user preferences change (e.g. edited in Profile)
+  useEffect(() => {
+    setActiveLanguage((prev) =>
+      userLanguages.some((l) => l.toLowerCase() === prev.toLowerCase())
+        ? prev
+        : userLanguages[0],
+    );
+  }, [userLanguages]);
+
+  useEffect(() => {
+    setActiveGenre((prev) =>
+      userGenres.some((g) => g.toLowerCase() === prev.toLowerCase())
+        ? prev
+        : userGenres[0],
+    );
+  }, [userGenres]);
+
+  useEffect(() => {
+    if (selectedArtists.length > 0) {
+      setActiveArtist((prev) =>
+        prev && (selectedArtists.includes(prev) || artistListRef.current.some((a) => a.name === prev || a.id === prev))
+          ? prev
+          : selectedArtists[0],
+      );
+    }
+  }, [selectedArtists]);
 
   // Song data
   const [trendingSongs, setTrendingSongs] = useState<Song[]>([]);
   const [genreSongs, setGenreSongs] = useState<Song[]>([]);
   const [artistSongs, setArtistSongs] = useState<Song[]>([]);
   const [artistList, setArtistList] = useState<ApiArtist[]>([]);
+  const artistListRef = useRef<ApiArtist[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [feedError, setFeedError] = useState(false);
 
   // In-memory caches to make switching tabs/pills instant
   const languageCache = useRef<Map<string, Song[]>>(new Map());
@@ -85,6 +117,7 @@ export default function HomeScreen() {
       try {
         const popular = await getPopularArtists(userLanguages);
         if (isMounted && popular.length > 0) {
+          artistListRef.current = popular;
           setArtistList(popular);
           setActiveArtist((prev) => prev || popular[0]?.name || '');
         }
@@ -101,16 +134,19 @@ export default function HomeScreen() {
   const fetchLanguageSongs = useCallback(async (lang: string, bypassCache = false) => {
     if (!bypassCache && languageCache.current.has(lang)) {
       setTrendingSongs(languageCache.current.get(lang)!);
+      setFeedError(false);
       setIsLoading(false);
       return;
     }
     try {
+      setFeedError(false);
       const res = await getSongsByLanguage(lang);
       const songs: Song[] = res?.data?.results ?? [];
       languageCache.current.set(lang, songs);
       setTrendingSongs(songs);
     } catch (e) {
       console.log('Error loading trending songs:', e);
+      setFeedError(true);
     } finally {
       setIsLoading(false);
     }
@@ -193,10 +229,20 @@ export default function HomeScreen() {
     [handlePlaySong],
   );
 
+  const activeArtistDisplayName = useMemo(() => {
+    if (!activeArtist) return '';
+    const matched = artistList.find(
+      (a) =>
+        a.id === activeArtist ||
+        a.name.toLowerCase() === activeArtist.toLowerCase(),
+    );
+    return matched?.name || artistNames[activeArtist] || activeArtist;
+  }, [activeArtist, artistList, artistNames]);
+
   const renderArtistChip = useCallback(
     ({ item }: { item: ApiArtist }) => {
       const isSelected =
-        item.name.toLowerCase() === activeArtist.toLowerCase() ||
+        item.name.toLowerCase() === activeArtistDisplayName.toLowerCase() ||
         item.id === activeArtist;
       return (
         <ArtistAvatarChip
@@ -207,7 +253,7 @@ export default function HomeScreen() {
         />
       );
     },
-    [activeArtist],
+    [activeArtist, activeArtistDisplayName],
   );
 
   const listHeader = useMemo(
@@ -255,7 +301,7 @@ export default function HomeScreen() {
               <View className="pt-2">
                 <SectionHeader
                   badge="SPOTLIGHT"
-                  title={`Featuring ${activeArtist}`}
+                  title={`Featuring ${activeArtistDisplayName}`}
                   subtitle="Top tracks from your chosen artist"
                 />
                 <FlatList
@@ -341,7 +387,7 @@ export default function HomeScreen() {
       </>
     ),
     [
-      activeArtist,
+      activeArtistDisplayName,
       activeGenre,
       activeLanguage,
       artistList,
@@ -376,6 +422,25 @@ export default function HomeScreen() {
             onRefresh={onRefresh}
             tintColor={theme.colors.accent.DEFAULT}
           />
+        }
+        ListEmptyComponent={
+          !isLoading && feedError ? (
+            <View className="mx-5 mt-2 p-5 rounded-2xl border border-glass-border bg-glass-tint items-center">
+              <Text className="text-sm font-bold text-white mb-1">
+                Could not load music feed
+              </Text>
+              <Text className="text-xs text-white/60 text-center mb-3">
+                Check your internet connection and try refreshing.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={onRefresh}
+                className="px-4 py-2 rounded-full bg-accent"
+              >
+                <Text className="text-xs font-extrabold text-text-dark">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : undefined
         }
       />
 

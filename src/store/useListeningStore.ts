@@ -47,6 +47,7 @@ export interface UserPlaylist {
 export interface ListeningStoreState {
   likedSongs: Song[];
   recentPlays: Song[];
+  recentSearches: string[];
   playlists: UserPlaylist[];
   playCounts: Record<string, PlayCountEntry>;
   artistPlayCounts: Record<string, number>;
@@ -56,7 +57,11 @@ export interface ListeningStoreState {
 
   toggleLikeSong: (song: Song) => void;
   recordPlay: (song: Song) => void;
+  addRecentSearch: (term: string) => void;
+  removeRecentSearch: (term: string) => void;
+  clearRecentSearches: () => void;
   createPlaylist: (name: string, initialSong?: Song) => UserPlaylist;
+  renamePlaylist: (playlistId: string, name: string) => void;
   deletePlaylist: (playlistId: string) => void;
   addSongToPlaylist: (playlistId: string, song: Song) => void;
   removeSongFromPlaylist: (playlistId: string, songId: string) => void;
@@ -71,6 +76,7 @@ export const useListeningStore = create<ListeningStoreState>()(
     (set, get) => ({
       likedSongs: [],
       recentPlays: [],
+      recentSearches: [],
       playlists: [],
       playCounts: {},
       artistPlayCounts: {},
@@ -138,6 +144,26 @@ export const useListeningStore = create<ListeningStoreState>()(
         });
       },
 
+      addRecentSearch: (term: string) => {
+        const trimmed = term.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          recentSearches: [
+            trimmed,
+            ...state.recentSearches.filter(
+              (t) => t.toLowerCase() !== trimmed.toLowerCase(),
+            ),
+          ].slice(0, 8),
+        }));
+      },
+
+      removeRecentSearch: (term: string) =>
+        set((state) => ({
+          recentSearches: state.recentSearches.filter((item) => item !== term),
+        })),
+
+      clearRecentSearches: () => set({ recentSearches: [] }),
+
       createPlaylist: (name: string, initialSong?: Song) => {
         const trimmed = name.trim() || 'Untitled Playlist';
         const newPlaylist: UserPlaylist = {
@@ -150,6 +176,16 @@ export const useListeningStore = create<ListeningStoreState>()(
           playlists: [newPlaylist, ...state.playlists],
         }));
         return newPlaylist;
+      },
+
+      renamePlaylist: (playlistId: string, name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          playlists: state.playlists.map((p) =>
+            p.id === playlistId ? { ...p, name: trimmed } : p,
+          ),
+        }));
       },
 
       deletePlaylist: (playlistId: string) =>
@@ -204,6 +240,7 @@ export const useListeningStore = create<ListeningStoreState>()(
       partialize: (state) => ({
         likedSongs: state.likedSongs,
         recentPlays: state.recentPlays,
+        recentSearches: state.recentSearches,
         playlists: state.playlists,
         playCounts: state.playCounts,
         artistPlayCounts: state.artistPlayCounts,

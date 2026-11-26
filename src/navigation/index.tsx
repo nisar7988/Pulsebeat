@@ -11,8 +11,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
   const hasCompletedOnboarding = useUserStore(
-    (state) => state.hasCompletedOnboarding
+    (state) => state.hasCompletedOnboarding,
   );
+  const hasHydrated = useUserStore((state) => state._hasHydrated);
+
+  if (!hasHydrated) {
+    return null;
+  }
 
   return (
     <Stack.Navigator

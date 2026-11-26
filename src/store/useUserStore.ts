@@ -31,11 +31,87 @@ const safeAsyncStorage = {
 
 export type AudioQuality = 'high' | 'medium' | 'low';
 
+const LANGUAGE_ALIASES: Record<string, string> = {
+  english: 'English',
+  hindi: 'Hindi',
+  punjabi: 'Punjabi',
+  spanish: 'Spanish',
+  korean: 'Korean',
+  japanese: 'Japanese',
+  tamil: 'Tamil',
+  telugu: 'Telugu',
+  french: 'French',
+  german: 'German',
+  arabic: 'Arabic',
+  bengali: 'Bengali',
+};
+
+const GENRE_ALIASES: Record<string, string> = {
+  pop: 'Pop',
+  'pop hits': 'Pop',
+  hiphop: 'Hip-Hop',
+  'hip-hop': 'Hip-Hop',
+  'hip hop': 'Hip-Hop',
+  electronic: 'Electronic',
+  lofi: 'Lo-Fi',
+  'lo-fi': 'Lo-Fi',
+  rock: 'Rock',
+  rnb: 'R&B',
+  'r&b': 'R&B',
+  bollywood: 'Bollywood',
+  indie: 'Indie',
+  latin: 'Latin',
+  classical: 'Classical',
+  jazz: 'Jazz',
+  metal: 'Metal',
+  chill: 'Chill',
+  acoustic: 'Acoustic',
+  workout: 'Workout',
+};
+
+const DEFAULT_ARTIST_NAMES: Record<string, string> = {
+  'the-weeknd': 'The Weeknd',
+  'taylor-swift': 'Taylor Swift',
+  'arijit-singh': 'Arijit Singh',
+  drake: 'Drake',
+  'dua-lipa': 'Dua Lipa',
+  'diljit-dosanjh': 'Diljit Dosanjh',
+  'billie-eilish': 'Billie Eilish',
+  bts: 'BTS',
+  'ed-sheeran': 'Ed Sheeran',
+  'bad-bunny': 'Bad Bunny',
+  'post-malone': 'Post Malone',
+  'olivia-rodrigo': 'Olivia Rodrigo',
+};
+
+export function normalizeLanguageName(lang: string): string {
+  const key = lang.trim().toLowerCase();
+  return LANGUAGE_ALIASES[key] || lang.trim();
+}
+
+export function normalizeGenreName(genre: string): string {
+  const key = genre.trim().toLowerCase();
+  return GENRE_ALIASES[key] || genre.trim();
+}
+
+function dedupeNormalized(values: string[], normalizer: (v: string) => string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const val of values) {
+    const normalized = normalizer(val);
+    if (!normalized || seen.has(normalized.toLowerCase())) continue;
+    seen.add(normalized.toLowerCase());
+    out.push(normalized);
+  }
+  return out;
+}
+
 export interface UserPreferencesState {
   hasCompletedOnboarding: boolean;
   selectedLanguages: string[];
   selectedGenres: string[];
   selectedArtists: string[];
+  artistNames: Record<string, string>;
   profileName: string;
   profileHandle: string;
   avatarId: string;
@@ -49,7 +125,7 @@ export interface UserPreferencesState {
   setLanguages: (languages: string[]) => void;
   toggleGenre: (genre: string) => void;
   setGenres: (genres: string[]) => void;
-  toggleArtist: (artist: string) => void;
+  toggleArtist: (artistId: string, artistName?: string) => void;
   setArtists: (artists: string[]) => void;
   updateProfile: (profile: {
     profileName?: string;
@@ -71,6 +147,7 @@ export const useUserStore = create<UserPreferencesState>()(
       selectedLanguages: ['English'],
       selectedGenres: [],
       selectedArtists: [],
+      artistNames: { ...DEFAULT_ARTIST_NAMES },
       profileName: 'PulseBeat Listener',
       profileHandle: '@pulsebeat',
       avatarId: 'neon-disc',
@@ -81,40 +158,56 @@ export const useUserStore = create<UserPreferencesState>()(
       _hasHydrated: false,
 
       toggleLanguage: (language: string) => {
+        const normalized = normalizeLanguageName(language);
         const { selectedLanguages } = get();
-        const exists = selectedLanguages.includes(language);
+        const exists = selectedLanguages.some(
+          (l) => l.toLowerCase() === normalized.toLowerCase(),
+        );
         if (exists) {
           if (selectedLanguages.length > 1) {
             set({
-              selectedLanguages: selectedLanguages.filter((l) => l !== language),
+              selectedLanguages: selectedLanguages.filter(
+                (l) => l.toLowerCase() !== normalized.toLowerCase(),
+              ),
             });
           }
         } else {
-          set({ selectedLanguages: [...selectedLanguages, language] });
+          set({ selectedLanguages: [...selectedLanguages, normalized] });
         }
       },
 
-      setLanguages: (languages: string[]) => set({ selectedLanguages: languages }),
+      setLanguages: (languages: string[]) =>
+        set({ selectedLanguages: dedupeNormalized(languages, normalizeLanguageName) }),
 
       toggleGenre: (genre: string) => {
+        const normalized = normalizeGenreName(genre);
         const { selectedGenres } = get();
-        const exists = selectedGenres.includes(genre);
+        const exists = selectedGenres.some(
+          (g) => g.toLowerCase() === normalized.toLowerCase(),
+        );
         set({
           selectedGenres: exists
-            ? selectedGenres.filter((g) => g !== genre)
-            : [...selectedGenres, genre],
+            ? selectedGenres.filter(
+                (g) => g.toLowerCase() !== normalized.toLowerCase(),
+              )
+            : [...selectedGenres, normalized],
         });
       },
 
-      setGenres: (genres: string[]) => set({ selectedGenres: genres }),
+      setGenres: (genres: string[]) =>
+        set({ selectedGenres: dedupeNormalized(genres, normalizeGenreName) }),
 
-      toggleArtist: (artist: string) => {
-        const { selectedArtists } = get();
-        const exists = selectedArtists.includes(artist);
+      toggleArtist: (artistId: string, artistName?: string) => {
+        const { selectedArtists, artistNames } = get();
+        const exists = selectedArtists.includes(artistId);
+        const nextNames = artistName
+          ? { ...artistNames, [artistId]: artistName }
+          : artistNames;
         set({
           selectedArtists: exists
-            ? selectedArtists.filter((a) => a !== artist)
-            : [...selectedArtists, artist],
+            ? selectedArtists.filter((a) => a !== artistId)
+            : [...selectedArtists, artistId],
+          artistNames: nextNames,
         });
       },
 
@@ -150,7 +243,19 @@ export const useUserStore = create<UserPreferencesState>()(
       name: 'pulsebeat-user-preferences',
       storage: createJSONStorage(() => safeAsyncStorage),
       onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
+        if (state) {
+          const normalizedLangs = dedupeNormalized(
+            state.selectedLanguages || ['English'],
+            normalizeLanguageName,
+          );
+          state.setLanguages(normalizedLangs.length ? normalizedLangs : ['English']);
+          state.setGenres(
+            dedupeNormalized(state.selectedGenres || [], normalizeGenreName),
+          );
+          state.setHasHydrated(true);
+        } else {
+          useUserStore.getState().setHasHydrated(true);
+        }
       },
     }
   )

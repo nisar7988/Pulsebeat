@@ -14,11 +14,11 @@ export const SongCard: React.FC<SongCardProps> = React.memo(({
     isCurrentSong,
     isPlayingCurrent,
     imageUrl,
+    songTitle,
     artistName,
     handlePlay,
     handleAddToPlaylist,
   } = useSongCard({ song, onPlay });
-  const songName = song.name.length > 10 ? song.name.slice(0, 15) + '...' : song.name;
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -41,7 +41,7 @@ export const SongCard: React.FC<SongCardProps> = React.memo(({
         }`}
         numberOfLines={1}
       >
-        {songName}
+        {songTitle}
       </Text>
       <Text className="text-xs text-white/60 mt-0.5" numberOfLines={1}>
         {artistName}

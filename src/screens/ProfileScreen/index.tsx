@@ -27,6 +27,7 @@ import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import {
   getSongArtistName,
   getSongArtwork,
+  getSongTitle,
   navigateAndPlaySong,
 } from '../../service/player';
 import EditProfileModal, { AVATAR_PRESETS } from './components/EditProfileModal';
@@ -39,6 +40,11 @@ const AVAILABLE_LANGUAGES = [
   'Telugu',
   'Spanish',
   'Korean',
+  'Japanese',
+  'French',
+  'German',
+  'Arabic',
+  'Bengali',
 ];
 
 const AVAILABLE_GENRES = [
@@ -46,10 +52,14 @@ const AVAILABLE_GENRES = [
   'Lo-Fi',
   'Electronic',
   'Hip-Hop',
+  'Bollywood',
+  'R&B',
+  'Indie',
+  'Rock',
   'Chill',
   'Acoustic',
-  'Rock',
   'Workout',
+  'Jazz',
 ];
 
 const QUALITY_OPTIONS: Array<{
@@ -76,6 +86,7 @@ export default function ProfileScreen() {
     selectedLanguages,
     selectedGenres,
     selectedArtists,
+    artistNames,
     profileName,
     profileHandle,
     avatarId,
@@ -126,11 +137,11 @@ export default function ProfileScreen() {
       .map(([name, count]) => ({ name, badge: `${count} plays` }));
 
     if (entries.length > 0) return entries;
-    return selectedArtists.map((name, idx) => ({
-      name,
+    return selectedArtists.map((id, idx) => ({
+      name: artistNames[id] || id,
       badge: `#${idx + 1} Pick`,
     }));
-  }, [artistPlayCounts, selectedArtists]);
+  }, [artistPlayCounts, artistNames, selectedArtists]);
 
   const memberSince = useMemo(() => {
     const date = new Date(joinedAt || Date.now());
@@ -319,7 +330,7 @@ export default function ProfileScreen() {
                       className="text-xs font-bold text-white mt-1.5"
                       numberOfLines={1}
                     >
-                      {song.name}
+                      {getSongTitle(song)}
                     </Text>
                     <Text className="text-[11px] text-text-muted" numberOfLines={1}>
                       {getSongArtistName(song)}
@@ -375,7 +386,7 @@ export default function ProfileScreen() {
                       className="text-xs font-bold text-white mt-1.5"
                       numberOfLines={1}
                     >
-                      {song.name}
+                      {getSongTitle(song)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -518,7 +529,9 @@ export default function ProfileScreen() {
             </Text>
             <View className="flex-row flex-wrap gap-2 mb-4">
               {AVAILABLE_LANGUAGES.map((lang) => {
-                const active = selectedLanguages.includes(lang);
+                const active = selectedLanguages.some(
+                  (l) => l.toLowerCase() === lang.toLowerCase(),
+                );
                 return (
                   <TouchableOpacity
                     key={lang}
@@ -547,7 +560,9 @@ export default function ProfileScreen() {
             </Text>
             <View className="flex-row flex-wrap gap-2">
               {AVAILABLE_GENRES.map((genre) => {
-                const active = selectedGenres.includes(genre);
+                const active = selectedGenres.some(
+                  (g) => g.toLowerCase() === genre.toLowerCase(),
+                );
                 return (
                   <TouchableOpacity
                     key={genre}

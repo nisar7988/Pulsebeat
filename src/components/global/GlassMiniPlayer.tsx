@@ -20,12 +20,14 @@ import {
 
 import { Song } from '../../types/song';
 import {
+  decodeHtmlEntities,
   pauseSong,
   resumeSong,
   playSong,
   skipToNextSong,
   getSongArtistName,
   getSongArtwork,
+  getSongTitle,
 } from '../../service/player';
 import { RootStackParamList } from '../../navigation/types';
 import { theme } from '../../theme';
@@ -67,9 +69,12 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
     return null;
   }
 
-  const title = activeTrack?.title || activeOrFallbackSong?.name || 'Nothing Playing';
+  const title =
+    decodeHtmlEntities(activeTrack?.title) ||
+    getSongTitle(activeOrFallbackSong) ||
+    'Nothing Playing';
   const artist =
-    activeTrack?.artist ||
+    decodeHtmlEntities(activeTrack?.artist) ||
     getSongArtistName(activeOrFallbackSong);
   const artwork =
     (activeTrack?.artwork as string) ||
@@ -94,6 +99,12 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
 
   const handleNext = async () => {
     try {
+      if (!activeTrack && activeOrFallbackSong) {
+        useCurrentSongStore.getState().setCurrentSong(activeOrFallbackSong);
+        await playSong(activeOrFallbackSong);
+        await skipToNextSong();
+        return;
+      }
       await skipToNextSong();
     } catch (e) {
       console.log('Error skipping track:', e);

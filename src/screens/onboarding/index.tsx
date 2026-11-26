@@ -236,11 +236,13 @@ export const OnboardingScreen = () => {
               showsVerticalScrollIndicator={false}
               className="flex-1"
               renderItem={({ item }: { item: LanguageOption }) => {
-                const selected = selectedLanguages.includes(item.id);
+                const selected = selectedLanguages.some(
+                  (l) => l.toLowerCase() === item.name.toLowerCase(),
+                );
                 return (
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    onPress={() => toggleLanguage(item.id)}
+                    onPress={() => toggleLanguage(item.name)}
                     className={`flex-1 p-3.5 rounded-2xl border overflow-hidden relative ${
                       selected
                         ? 'border-accent bg-accent/25'
@@ -294,11 +296,13 @@ export const OnboardingScreen = () => {
               showsVerticalScrollIndicator={false}
               className="flex-1"
               renderItem={({ item }: { item: GenreOption }) => {
-                const selected = selectedGenres.includes(item.id);
+                const selected = selectedGenres.some(
+                  (g) => g.toLowerCase() === item.canonical.toLowerCase(),
+                );
                 return (
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    onPress={() => toggleGenre(item.id)}
+                    onPress={() => toggleGenre(item.canonical)}
                     className={`flex-1 p-3.5 rounded-2xl border overflow-hidden relative ${
                       selected
                         ? 'border-accent bg-accent/25'
@@ -397,7 +401,7 @@ export const OnboardingScreen = () => {
                     return (
                       <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => toggleArtist(item.id)}
+                        onPress={() => toggleArtist(item.id, item.name)}
                         className={`flex-1 p-2.5 rounded-2xl border items-center overflow-hidden relative ${
                           selected
                             ? 'border-accent bg-accent/25'

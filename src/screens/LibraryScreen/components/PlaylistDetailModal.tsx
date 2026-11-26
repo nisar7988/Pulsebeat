@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -14,12 +15,17 @@ import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { theme } from '../../../theme';
 import { Song } from '../../../types/song';
-import { getSongArtistName, getSongArtwork } from '../../../service/player';
+import {
+  getSongArtistName,
+  getSongArtwork,
+  getSongTitle,
+} from '../../../service/player';
 
 export interface ActivePlaylistDetail {
   id: string;
   title: string;
   subtitle: string;
+  badgeLabel?: string;
   image?: string;
   isLocal: boolean;
   songs: Song[];
@@ -32,6 +38,7 @@ interface PlaylistDetailModalProps {
   onPlayAll: (songs: Song[], startIndex?: number) => void;
   onRemoveSong?: (playlistId: string, songId: string) => void;
   onDeletePlaylist?: (playlistId: string) => void;
+  onRenamePlaylist?: (playlistId: string, newName: string) => void;
   onSaveCuratedPlaylist?: (playlist: ActivePlaylistDetail) => void;
 }
 
@@ -42,8 +49,17 @@ export default function PlaylistDetailModal({
   onPlayAll,
   onRemoveSong,
   onDeletePlaylist,
+  onRenamePlaylist,
   onSaveCuratedPlaylist,
 }: PlaylistDetailModalProps) {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+
+  useEffect(() => {
+    setEditingTitle(false);
+    setDraftTitle(playlist?.title || '');
+  }, [playlist?.id, playlist?.title]);
+
   if (!playlist) return null;
 
   const coverUrl =
@@ -66,6 +82,14 @@ export default function PlaylistDetailModal({
         },
       ],
     );
+  };
+
+  const handleSaveRename = () => {
+    const trimmed = draftTitle.trim();
+    if (trimmed && trimmed !== playlist.title) {
+      onRenamePlaylist?.(playlist.id, trimmed);
+    }
+    setEditingTitle(false);
   };
 
   return (
@@ -91,7 +115,8 @@ export default function PlaylistDetailModal({
             <Feather name="chevron-down" size={20} color="#FFFFFF" />
           </TouchableOpacity>
           <Text className="text-xs font-bold text-text-muted uppercase tracking-widest">
-            {playlist.isLocal ? 'Local Playlist' : 'Curated Collection'}
+            {playlist.badgeLabel ||
+              (playlist.isLocal ? 'Local Playlist' : 'Curated Collection')}
           </Text>
           {playlist.isLocal ? (
             <TouchableOpacity
@@ -100,13 +125,18 @@ export default function PlaylistDetailModal({
             >
               <Feather name="trash-2" size={16} color="#EF4444" />
             </TouchableOpacity>
-          ) : (
+          ) : onSaveCuratedPlaylist ? (
             <TouchableOpacity
-              onPress={() => onSaveCuratedPlaylist?.(playlist)}
-              className="h-10 px-3 rounded-full border border-accent/50 bg-accent/15 items-center justify-center"
+              disabled={loading || playlist.songs.length === 0}
+              onPress={() => onSaveCuratedPlaylist(playlist)}
+              className={`h-10 px-3 rounded-full border border-accent/50 bg-accent/15 items-center justify-center ${
+                loading || playlist.songs.length === 0 ? 'opacity-40' : ''
+              }`}
             >
               <Text className="text-xs font-bold text-accent">Save</Text>
             </TouchableOpacity>
+          ) : (
+            <View className="h-10 w-10" />
           )}
         </View>
 
@@ -131,12 +161,47 @@ export default function PlaylistDetailModal({
                 />
               )}
             </View>
-            <Text
-              className="text-2xl font-extrabold text-white text-center"
-              numberOfLines={2}
-            >
-              {playlist.title}
-            </Text>
+
+            {editingTitle ? (
+              <View className="w-full flex-row items-center gap-2 px-4 mb-1">
+                <TextInput
+                  value={draftTitle}
+                  onChangeText={setDraftTitle}
+                  autoFocus
+                  maxLength={36}
+                  onSubmitEditing={handleSaveRename}
+                  className="flex-1 rounded-xl border border-accent/50 bg-white/10 px-3 py-2 text-base font-bold text-white text-center"
+                />
+                <TouchableOpacity
+                  onPress={handleSaveRename}
+                  className="h-9 px-3 rounded-xl bg-accent items-center justify-center"
+                >
+                  <Text className="text-xs font-extrabold text-text-dark">Save</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View className="flex-row items-center justify-center gap-2 px-4">
+                <Text
+                  className="text-2xl font-extrabold text-white text-center"
+                  numberOfLines={2}
+                >
+                  {playlist.title}
+                </Text>
+                {playlist.isLocal && onRenamePlaylist && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setDraftTitle(playlist.title);
+                      setEditingTitle(true);
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    className="h-7 w-7 rounded-full border border-glass-border bg-glass-tint items-center justify-center"
+                  >
+                    <Feather name="edit-2" size={12} color={theme.colors.accent.DEFAULT} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
             <Text className="text-xs text-text-muted mt-1">
               {loading
                 ? 'Loading tracks...'
@@ -170,7 +235,7 @@ export default function PlaylistDetailModal({
                 No songs in this playlist yet
               </Text>
               <Text className="text-xs text-text-muted text-center">
-                Tap the + button on any track in Library to add songs here.
+                Tap the + button on any track to add songs here.
               </Text>
             </View>
           ) : (
@@ -194,7 +259,7 @@ export default function PlaylistDetailModal({
                     className="text-sm font-bold text-white"
                     numberOfLines={1}
                   >
-                    {song.name}
+                    {getSongTitle(song)}
                   </Text>
                   <Text
                     className="text-xs text-text-muted mt-0.5"

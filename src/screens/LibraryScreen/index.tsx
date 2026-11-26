@@ -21,6 +21,7 @@ import { Song } from '../../types/song';
 import {
   getSongArtistName,
   getSongArtwork,
+  getSongTitle,
   playQueueAndNavigate,
 } from '../../service/player';
 import { getPlaylistBySearch, getPlaylistDetails } from '../../service/music';
@@ -57,6 +58,7 @@ export default function LibraryScreen() {
     playlists: localPlaylists,
     toggleLikeSong,
     createPlaylist,
+    renamePlaylist,
     deletePlaylist,
     addSongToPlaylist,
     removeSongFromPlaylist,
@@ -156,13 +158,15 @@ export default function LibraryScreen() {
     openPlaylistModal(null);
   };
 
-  // Keep detail modal in sync if user removes a song from a local playlist
+  // Keep detail modal in sync if user renames or removes a song from a local playlist
   const syncedDetailPlaylist = detailPlaylist?.isLocal
     ? (() => {
         const latest = localPlaylists.find((p) => p.id === detailPlaylist.id);
         return latest
           ? {
               ...detailPlaylist,
+              title: latest.name,
+              subtitle: `${latest.songs.length} tracks`,
               songs: latest.songs,
               image: latest.songs[0] ? getSongArtwork(latest.songs[0]) : undefined,
             }
@@ -184,7 +188,7 @@ export default function LibraryScreen() {
       />
       <View className="flex-1 pr-2">
         <Text className="text-sm font-bold text-white" numberOfLines={1}>
-          {song.name}
+          {getSongTitle(song)}
         </Text>
         <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
           {getSongArtistName(song)}
@@ -520,6 +524,7 @@ export default function LibraryScreen() {
           playQueueAndNavigate(navigation, songs, startIndex)
         }
         onRemoveSong={removeSongFromPlaylist}
+        onRenamePlaylist={renamePlaylist}
         onDeletePlaylist={deletePlaylist}
         onSaveCuratedPlaylist={handleSaveCuratedPlaylist}
       />

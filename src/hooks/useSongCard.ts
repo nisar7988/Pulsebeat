@@ -5,6 +5,7 @@ import { Song } from '../types/song';
 import {
   getSongArtistName,
   getSongArtwork,
+  getSongTitle,
   navigateAndPlaySong,
 } from '../service/player';
 import { RootStackParamList } from '../navigation/types';
@@ -24,6 +25,7 @@ export function useSongCard({ song, onPlay }: BaseSongCardProps) {
   const isPlaying = useCurrentSongStore((state) => state.isPlaying);
   const isPlayingCurrent = isCurrentSong && isPlaying;
   const imageUrl = getSongArtwork(song);
+  const songTitle = getSongTitle(song);
   const artistName = getSongArtistName(song);
 
   const handlePlay = useCallback(() => {
@@ -42,6 +44,7 @@ export function useSongCard({ song, onPlay }: BaseSongCardProps) {
     isCurrentSong,
     isPlayingCurrent,
     imageUrl,
+    songTitle,
     artistName,
     handlePlay,
     handleAddToPlaylist,

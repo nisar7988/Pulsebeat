@@ -8,6 +8,7 @@ import GlobalPlaylistModal from './src/components/global/GlobalPlaylistModal';
 import RootNavigator from './src/navigation';
 import { theme } from './src/theme';
 import { initializePlayer } from './src/service/player';
+import { useUserStore } from './src/store';
 import './global.css';
 
 const navigationTheme = {
@@ -22,6 +23,7 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
   const [splashVisible, setSplashVisible] = React.useState(true);
   const [playerReady, setPlayerReady] = React.useState(false);
+  const userHydrated = useUserStore((state) => state._hasHydrated);
 
   React.useEffect(() => {
     initializePlayer()
@@ -40,7 +42,7 @@ function App() {
       <GlobalPlaylistModal />
       {splashVisible && (
         <AnimatedBootSplash
-          ready={playerReady}
+          ready={playerReady && userHydrated}
           onAnimationEnd={() => setSplashVisible(false)}
         />
       )}

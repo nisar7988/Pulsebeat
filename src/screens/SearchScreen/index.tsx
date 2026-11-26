@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   Keyboard,
   Platform,
   ScrollView,
@@ -20,12 +22,39 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { theme } from '../../theme';
 import { Song } from '../../types/song';
-import { getSongBySearch, getSongsByLanguage } from '../../service/music';
-import { navigateAndPlaySong } from '../../service/player';
-import { useUserStore } from '../../store';
+import {
+  getAlbumBySearch,
+  getAlbumDetails,
+  getArtistBySearch,
+  getArtistSongs,
+  getPlaylistBySearch,
+  getPlaylistDetails,
+  getSongBySearch,
+  getSongsByLanguage,
+} from '../../service/music';
+import {
+  decodeHtmlEntities,
+  navigateAndPlaySong,
+  playQueueAndNavigate,
+} from '../../service/player';
+import { useListeningStore, useUserStore } from '../../store';
 import { RootStackParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import { SongCard } from '../HomeScreen/components';
+import PlaylistDetailModal, {
+  ActivePlaylistDetail,
+} from '../LibraryScreen/components/PlaylistDetailModal';
+
+type SearchScope = 'Songs' | 'Artists' | 'Albums' | 'Playlists';
+const SEARCH_SCOPES: SearchScope[] = ['Songs', 'Artists', 'Albums', 'Playlists'];
+
+interface CollectionSearchItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  kind: 'artist' | 'album' | 'playlist';
+}
 
 const MOODS = [
   'All',
@@ -83,27 +112,34 @@ const GlassCard: React.FC<GlassCardProps> = ({
 
 const SearchScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { selectedLanguages, selectedArtists } = useUserStore();
-
+  const { selectedLanguages } = useUserStore();
+  const {
+    recentSearches,
+    addRecentSearch,
+    removeRecentSearch,
+    clearRecentSearches,
+    createPlaylist,
+    addSongToPlaylist,
+  } = useListeningStore();
 
   // Search State
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeMood, setActiveMood] = useState('All');
+  const [activeScope, setActiveScope] = useState<SearchScope>('Songs');
 
-  // Seed recent searches with user's favorite artists or standard defaults
-  const initialRecent = useMemo(() => {
-    if (selectedArtists && selectedArtists.length > 0) {
-      return selectedArtists.slice(0, 5);
-    }
-    return ['Arijit Singh', 'Diljit Dosanjh', 'The Weeknd', 'Taylor Swift'];
-  }, [selectedArtists]);
-
-  const [recent, setRecent] = useState<string[]>(initialRecent);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
+  const [collectionResults, setCollectionResults] = useState<CollectionSearchItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMoreSongs, setHasMoreSongs] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const [topPicks, setTopPicks] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoadingTopPicks, setIsLoadingTopPicks] = useState(true);
+
+  const [detailModal, setDetailModal] = useState<ActivePlaylistDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Debounce search query input (350ms)
   useEffect(() => {
@@ -142,28 +178,97 @@ const SearchScreen = () => {
     };
   }, [selectedLanguages]);
 
-  // Fetch search results when debounced query changes
+  // Fetch search results when debounced query or scope changes
   useEffect(() => {
     if (!debouncedQuery) {
       setSearchResults([]);
+      setCollectionResults([]);
+      setHasMoreSongs(false);
+      setPage(1);
       setIsSearching(false);
       return;
     }
 
     let isMounted = true;
     setIsSearching(true);
+    setPage(1);
 
     const performSearch = async () => {
       try {
-        const res = await getSongBySearch(debouncedQuery);
-        if (isMounted) {
-          const songs: Song[] = res?.data?.results || res?.data?.songs || res?.data || [];
-          setSearchResults(songs);
+        if (activeScope === 'Songs') {
+          const res = await getSongBySearch(debouncedQuery, 1, 20);
+          if (isMounted) {
+            const songs: Song[] = res?.data?.results || res?.data?.songs || res?.data || [];
+            setSearchResults(songs);
+            setCollectionResults([]);
+            setHasMoreSongs(songs.length >= 20);
+          }
+        } else if (activeScope === 'Artists') {
+          const res = await getArtistBySearch(debouncedQuery, 1, 20);
+          if (isMounted) {
+            const raw = res?.data?.results || [];
+            setCollectionResults(
+              raw.map((item: any) => ({
+                id: String(item.id),
+                title: decodeHtmlEntities(item.name || 'Artist'),
+                subtitle: item.role || 'Artist',
+                image:
+                  item.image?.[2]?.url ||
+                  item.image?.[1]?.url ||
+                  item.image?.[0]?.url ||
+                  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+                kind: 'artist',
+              })),
+            );
+            setSearchResults([]);
+            setHasMoreSongs(false);
+          }
+        } else if (activeScope === 'Albums') {
+          const res = await getAlbumBySearch(debouncedQuery, 1, 20);
+          if (isMounted) {
+            const raw = res?.data?.results || [];
+            setCollectionResults(
+              raw.map((item: any) => ({
+                id: String(item.id),
+                title: decodeHtmlEntities(item.name || 'Album'),
+                subtitle: item.year ? `Album • ${item.year}` : 'Album',
+                image:
+                  item.image?.[2]?.url ||
+                  item.image?.[1]?.url ||
+                  item.image?.[0]?.url ||
+                  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+                kind: 'album',
+              })),
+            );
+            setSearchResults([]);
+            setHasMoreSongs(false);
+          }
+        } else {
+          const res = await getPlaylistBySearch(debouncedQuery, 1, 20);
+          if (isMounted) {
+            const raw = res?.data?.results || [];
+            setCollectionResults(
+              raw.map((item: any) => ({
+                id: String(item.id),
+                title: decodeHtmlEntities(item.title || item.name || 'Playlist'),
+                subtitle: `${item.songCount || 20} songs • Playlist`,
+                image:
+                  item.image?.[2]?.url ||
+                  item.image?.[1]?.url ||
+                  item.image?.[0]?.url ||
+                  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+                kind: 'playlist',
+              })),
+            );
+            setSearchResults([]);
+            setHasMoreSongs(false);
+          }
         }
       } catch (err) {
         console.log('Search API error:', err);
         if (isMounted) {
           setSearchResults([]);
+          setCollectionResults([]);
         }
       } finally {
         if (isMounted) {
@@ -177,23 +282,101 @@ const SearchScreen = () => {
     return () => {
       isMounted = false;
     };
-  }, [debouncedQuery]);
+  }, [debouncedQuery, activeScope]);
 
-  const addRecent = useCallback((term: string) => {
-    const trimmed = term.trim();
-    if (!trimmed) return;
-    setRecent((prev) => [
-      trimmed,
-      ...prev.filter((t) => t.toLowerCase() !== trimmed.toLowerCase()),
-    ].slice(0, 6));
+  const loadMoreSongs = useCallback(async () => {
+    if (
+      activeScope !== 'Songs' ||
+      !debouncedQuery ||
+      !hasMoreSongs ||
+      loadingMore ||
+      isSearching
+    ) {
+      return;
+    }
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const res = await getSongBySearch(debouncedQuery, nextPage, 20);
+      const nextSongs: Song[] = res?.data?.results || res?.data?.songs || [];
+      if (nextSongs.length > 0) {
+        setSearchResults((prev) => {
+          const existing = new Set(prev.map((s) => s.id));
+          return [...prev, ...nextSongs.filter((s) => !existing.has(s.id))];
+        });
+        setPage(nextPage);
+        setHasMoreSongs(nextSongs.length >= 20);
+      } else {
+        setHasMoreSongs(false);
+      }
+    } catch (e) {
+      console.log('Load more songs error:', e);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [activeScope, debouncedQuery, hasMoreSongs, isSearching, loadingMore, page]);
+
+  const openCollectionDetail = useCallback(async (item: CollectionSearchItem) => {
+    const badgeLabel =
+      item.kind === 'artist'
+        ? 'Artist Catalog'
+        : item.kind === 'album'
+        ? 'Album'
+        : 'Playlist';
+    setDetailModal({
+      id: item.id,
+      title: item.title,
+      subtitle: item.subtitle,
+      badgeLabel,
+      image: item.image,
+      isLocal: false,
+      songs: [],
+    });
+    setDetailLoading(true);
+    try {
+      let songs: Song[] = [];
+      if (item.kind === 'artist') {
+        const res = await getArtistSongs(item.id);
+        songs = res?.data?.songs || res?.data?.results || [];
+      } else if (item.kind === 'album') {
+        const res = await getAlbumDetails(item.id);
+        songs = res?.data?.songs || [];
+      } else {
+        const res = await getPlaylistDetails(item.id);
+        songs = res?.data?.songs || [];
+      }
+      setDetailModal((prev) =>
+        prev && prev.id === item.id ? { ...prev, songs } : prev,
+      );
+    } catch (e) {
+      console.log('Collection detail fetch error:', e);
+    } finally {
+      setDetailLoading(false);
+    }
   }, []);
 
+  const handleSaveCollection = useCallback(
+    (pl: ActivePlaylistDetail) => {
+      const created = createPlaylist(pl.title);
+      pl.songs.forEach((song) => addSongToPlaylist(created.id, song));
+      Alert.alert('Saved to Library', `"${pl.title}" was saved to your playlists.`);
+    },
+    [addSongToPlaylist, createPlaylist],
+  );
+
+  const addRecent = useCallback(
+    (term: string) => {
+      addRecentSearch(term);
+    },
+    [addRecentSearch],
+  );
+
   const removeRecent = (term: string) => {
-    setRecent((prev) => prev.filter((item) => item !== term));
+    removeRecentSearch(term);
   };
 
   const clearAllRecent = () => {
-    setRecent([]);
+    clearRecentSearches();
   };
 
   const handleSelectMood = async (mood: string) => {
@@ -224,12 +407,22 @@ const SearchScreen = () => {
     navigateAndPlaySong(navigation, song);
   };
 
-  const displayList = useMemo(() => {
-    if (query.trim().length > 0) {
+  const isSearchingSongs = query.trim().length > 0 && activeScope === 'Songs';
+  const isSearchingCollections = query.trim().length > 0 && activeScope !== 'Songs';
+
+  const displayList: Array<Song | CollectionSearchItem> = useMemo(() => {
+    if (isSearchingCollections) {
+      return collectionResults;
+    }
+    if (isSearchingSongs) {
       return searchResults;
     }
     return topPicks;
-  }, [query, searchResults, topPicks]);
+  }, [collectionResults, isSearchingCollections, isSearchingSongs, searchResults, topPicks]);
+
+  const activeResultCount = isSearchingCollections
+    ? collectionResults.length
+    : searchResults.length;
 
   return (
     <View className="flex-1 bg-background">
@@ -244,7 +437,7 @@ const SearchScreen = () => {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <FlatList
           data={displayList}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, idx) => `${item.id}-${idx}`}
           contentContainerClassName="pt-3 px-4 pb-48"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -253,6 +446,8 @@ const SearchScreen = () => {
           maxToRenderPerBatch={6}
           windowSize={5}
           removeClippedSubviews={Platform.OS === 'android'}
+          onEndReached={loadMoreSongs}
+          onEndReachedThreshold={0.4}
           ListHeaderComponent={
             <>
               {/* Header Title & Compass Icon */}
@@ -357,8 +552,42 @@ const SearchScreen = () => {
                 })}
               </ScrollView>
 
+              {/* Search Scope Tabs (shown when searching) */}
+              {query.trim().length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerClassName="gap-2 pb-4"
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {SEARCH_SCOPES.map((scope) => {
+                    const selected = activeScope === scope;
+                    return (
+                      <TouchableOpacity
+                        key={scope}
+                        activeOpacity={0.8}
+                        onPress={() => setActiveScope(scope)}
+                        className={`px-4 py-1.5 rounded-full border ${
+                          selected
+                            ? 'border-accent bg-accent/25'
+                            : 'border-white/15 bg-white/10'
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-bold ${
+                            selected ? 'text-accent' : 'text-white/70'
+                          }`}
+                        >
+                          {scope}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+
               {/* Recent Searches (shown only when query is empty) */}
-              {query.length === 0 && recent.length > 0 && (
+              {query.length === 0 && recentSearches.length > 0 && (
                 <View className="mb-5">
                   <View className="mb-3 flex-row items-center justify-between">
                     <Text className="text-base font-semibold text-text">
@@ -371,7 +600,7 @@ const SearchScreen = () => {
                     </TouchableOpacity>
                   </View>
                   <View className="flex-row flex-wrap gap-2.5">
-                    {recent.map((term) => (
+                    {recentSearches.map((term) => (
                       <TouchableOpacity
                         key={term}
                         activeOpacity={0.8}
@@ -446,26 +675,65 @@ const SearchScreen = () => {
                 </View>
               )}
 
-              {/* Section Header for Song Items */}
+              {/* Section Header for Song / Collection Items */}
               <View className="mb-3.5 flex-row items-center justify-between">
                 <Text className="text-base font-semibold text-text">
                   {query.trim().length > 0
-                    ? `Results for "${query.trim()}"`
+                    ? `${activeScope} for "${query.trim()}"`
                     : 'Top Picks For You'}
                 </Text>
-                {query.trim().length > 0 && searchResults.length > 0 && (
+                {query.trim().length > 0 && activeResultCount > 0 && (
                   <View className="rounded-full border border-glass-border bg-glass-tint px-2.5 py-0.5">
                     <Text className="text-xs text-text-muted">
-                      {searchResults.length} {searchResults.length === 1 ? 'song' : 'songs'}
+                      {activeResultCount} found
                     </Text>
                   </View>
                 )}
               </View>
             </>
           }
-          renderItem={({ item }) => (
-            <SongCard song={item} onPlay={handlePlaySong} />
-          )}
+          renderItem={({ item }) => {
+            if ('kind' in item) {
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => openCollectionDetail(item)}
+                  className="mb-2.5 flex-row items-center rounded-2xl border border-glass-border bg-glass-tint p-2.5"
+                >
+                  <Image
+                    source={{ uri: item.image }}
+                    className={`w-12 h-12 mr-3 ${
+                      item.kind === 'artist' ? 'rounded-full' : 'rounded-xl'
+                    }`}
+                    resizeMode="cover"
+                  />
+                  <View className="flex-1 pr-2">
+                    <Text className="text-sm font-bold text-white" numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
+                      {item.subtitle}
+                    </Text>
+                  </View>
+                  <View className="h-9 w-9 rounded-full bg-accent/15 border border-accent/40 items-center justify-center">
+                    <Feather
+                      name="chevron-right"
+                      size={16}
+                      color={theme.colors.accent.DEFAULT}
+                    />
+                  </View>
+                </TouchableOpacity>
+              );
+            }
+            return <SongCard song={item} onPlay={handlePlaySong} />;
+          }}
+          ListFooterComponent={
+            loadingMore ? (
+              <View className="py-4 items-center">
+                <ActivityIndicator size="small" color={theme.colors.accent.DEFAULT} />
+              </View>
+            ) : undefined
+          }
           ListEmptyComponent={
             isSearching ? (
               <GlassCard className="items-center justify-center gap-3 rounded-3xl py-12">
@@ -526,6 +794,18 @@ const SearchScreen = () => {
           }
         />
       </SafeAreaView>
+
+      <PlaylistDetailModal
+        playlist={detailModal}
+        loading={detailLoading}
+        onClose={() => setDetailModal(null)}
+        onPlayAll={(songs, startIndex) =>
+          playQueueAndNavigate(navigation, songs, startIndex)
+        }
+        onSaveCuratedPlaylist={
+          detailModal?.badgeLabel === 'Playlist' ? handleSaveCollection : undefined
+        }
+      />
 
       {/* Floating Glass Mini Player */}
       <GlassMiniPlayer />

@@ -9,6 +9,13 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { theme } from '../../../theme';
+import { useUserStore } from '../../../store';
+
+const QUALITY_BADGE: Record<'high' | 'medium' | 'low', string> = {
+  high: '320K',
+  medium: '160K',
+  low: '96K',
+};
 
 export interface HomeHeaderProps {
   languages: string[];
@@ -23,6 +30,9 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   onSelectLanguage,
   onOpenSearch,
 }) => {
+  const audioQuality = useUserStore((state) => state.audioQuality);
+  const qualityLabel = QUALITY_BADGE[audioQuality] || '320K';
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -74,7 +84,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
           <View className="flex-row items-center gap-2">
             <View className="hidden sm:flex flex-row items-center gap-1 rounded-full border border-accent/40 bg-accent/15 px-2.5 py-1">
               <Feather name="disc" size={11} color={theme.colors.accent.DEFAULT} />
-              <Text className="text-[10px] font-extrabold text-accent">320K</Text>
+              <Text className="text-[10px] font-extrabold text-accent">{qualityLabel}</Text>
             </View>
 
             {onOpenSearch && (

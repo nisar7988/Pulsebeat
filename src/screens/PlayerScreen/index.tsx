@@ -5,6 +5,7 @@ import {
   StatusBar,
   Dimensions,
   StyleSheet,
+  Text,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -22,9 +23,17 @@ import {
   toggleShuffleMode,
   getSongArtistName,
   getSongArtwork,
+  getSongTitle,
+  decodeHtmlEntities,
 } from '../../service/player';
 import ProgressBar from '../../components/ui/ProgressBar';
-import { PlayerHeader, SongInfo, PlayerControls } from './components';
+import {
+  PlayerHeader,
+  SongInfo,
+  PlayerControls,
+  LyricsModal,
+  QueueModal,
+} from './components';
 import { useSongTheme } from '../../hooks/useSongTheme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 import { useListeningStore } from '../../store';
@@ -37,48 +46,53 @@ import {
 const { width: W } = Dimensions.get('window');
 const PANEL_H = 340;
 
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';
+  const total = Math.floor(seconds);
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
 interface PlayerProgressProps {
-  isPlaying: boolean;
+  fallbackDuration?: number;
   trackColor: string;
   progressColor: string;
   dotColor: string;
 }
 
 const PlayerProgress: React.FC<PlayerProgressProps> = React.memo(({
-  isPlaying,
+  fallbackDuration = 0,
   trackColor,
   progressColor,
   dotColor,
 }) => {
   const { position, duration } = useProgress(250);
-  const [simulatedProgress, setSimulatedProgress] = useState(0.2);
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekProgress, setSeekProgress] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!isPlaying || duration > 0 || isSeeking) return;
-    const id = setInterval(() => setSimulatedProgress((p) => (p >= 1 ? 0 : p + 0.004)), 1000);
-    return () => clearInterval(id);
-  }, [isPlaying, duration, isSeeking]);
-
-  const currentRatio = duration > 0 ? position / duration : simulatedProgress;
+  const effectiveDuration = duration > 0 ? duration : fallbackDuration;
+  const currentRatio =
+    effectiveDuration > 0 ? Math.min(Math.max(position / effectiveDuration, 0), 1) : 0;
   const progress = isSeeking && seekProgress !== null ? seekProgress : currentRatio;
+  const displayPosition =
+    isSeeking && seekProgress !== null
+      ? seekProgress * effectiveDuration
+      : position;
 
   const handleSeek = useCallback(
     async (ratio: number) => {
       setIsSeeking(false);
       setSeekProgress(null);
       try {
-        if (duration > 0) {
-          await seekTo(ratio * duration);
-        } else {
-          setSimulatedProgress(ratio);
+        if (effectiveDuration > 0) {
+          await seekTo(ratio * effectiveDuration);
         }
       } catch (e) {
         console.log('Seek error:', e);
       }
     },
-    [duration],
+    [effectiveDuration],
   );
 
   const handleScrub = useCallback((ratio: number) => {
@@ -87,15 +101,28 @@ const PlayerProgress: React.FC<PlayerProgressProps> = React.memo(({
   }, []);
 
   return (
-    <ProgressBar
-      progress={progress}
-      width={W}
-      trackColor={trackColor}
-      progressColor={progressColor}
-      dotColor={dotColor}
-      onSeek={handleSeek}
-      onScrub={handleScrub}
-    />
+    <>
+      <ProgressBar
+        progress={progress}
+        width={W}
+        trackColor={trackColor}
+        progressColor={progressColor}
+        dotColor={dotColor}
+        onSeek={handleSeek}
+        onScrub={handleScrub}
+      />
+      <View
+        pointerEvents="none"
+        className="absolute top-[108px] left-7 right-7 flex-row items-center justify-between"
+      >
+        <Text className="text-[11px] font-semibold text-white/75">
+          {formatTime(displayPosition)}
+        </Text>
+        <Text className="text-[11px] font-semibold text-white/75">
+          {formatTime(effectiveDuration)}
+        </Text>
+      </View>
+    </>
   );
 });
 
@@ -108,7 +135,9 @@ const NowPlayingScreen = () => {
   const currentSong = useCurrentSongStore((state) => state.currentSong);
   const activeSong = currentSong || song;
 
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(Boolean(playing));
+  const [lyricsVisible, setLyricsVisible] = useState(false);
+  const [queueVisible, setQueueVisible] = useState(false);
   const isShuffle = useCurrentSongStore((state) => state.isShuffle);
   const isRepeat = useCurrentSongStore((state) => state.isRepeat);
 
@@ -116,6 +145,7 @@ const NowPlayingScreen = () => {
     activeSong ? state.likedSongs.some((s) => s.id === activeSong.id) : false,
   );
   const toggleLikeSong = useListeningStore((state) => state.toggleLikeSong);
+  const openPlaylistModal = useListeningStore((state) => state.openPlaylistModal);
 
   // Sync isPlaying state with TrackPlayer
   useEffect(() => {
@@ -167,9 +197,13 @@ const NowPlayingScreen = () => {
   }, [song?.id]);
 
   // Prioritize activeSong so UI immediately updates to clicked song without waiting for TrackPlayer native bridge
-  const title = activeSong?.name || activeTrack?.title || 'Midnight Dreams';
+  const title =
+    (activeSong ? getSongTitle(activeSong) : decodeHtmlEntities(activeTrack?.title)) ||
+    'Midnight Dreams';
   const artist =
-    (activeSong ? getSongArtistName(activeSong) : activeTrack?.artist) || 'Luna Waves';
+    (activeSong
+      ? getSongArtistName(activeSong)
+      : decodeHtmlEntities(activeTrack?.artist)) || 'Luna Waves';
   const artwork =
     (activeSong ? getSongArtwork(activeSong) : (activeTrack?.artwork as string)) ||
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=900';
@@ -206,10 +240,21 @@ const NowPlayingScreen = () => {
       />
 
       {/* Header */}
-      <PlayerHeader onBack={() => navigation.goBack()} />
+      <PlayerHeader
+        onBack={() => navigation.goBack()}
+        onLyricsPress={() => setLyricsVisible(true)}
+        onQueuePress={() => setQueueVisible(true)}
+      />
 
       {/* Song info (sits just above the dome) */}
-      <SongInfo title={title} artist={artist} bottomOffset={PANEL_H + 18} />
+      <SongInfo
+        title={title}
+        artist={artist}
+        bottomOffset={PANEL_H + 18}
+        onAddToPlaylist={
+          activeSong ? () => openPlaylistModal(activeSong) : undefined
+        }
+      />
 
       {/* Dome player panel */}
       <LinearGradient
@@ -226,9 +271,9 @@ const NowPlayingScreen = () => {
           overflow: 'hidden',
         }}
       >
-        {/* Arc progress */}
+        {/* Arc progress + timestamps */}
         <PlayerProgress
-          isPlaying={isPlaying}
+          fallbackDuration={activeSong?.duration || activeTrack?.duration || 0}
           trackColor={songTheme.trackColor}
           progressColor={songTheme.progressColor}
           dotColor={songTheme.dotColor}
@@ -262,6 +307,22 @@ const NowPlayingScreen = () => {
           }}
         />
       </LinearGradient>
+
+      <LyricsModal
+        visible={lyricsVisible}
+        songId={activeSong?.id || activeTrack?.id}
+        title={title}
+        artist={artist}
+        duration={activeSong?.duration || activeTrack?.duration || undefined}
+        accentColor={songTheme.accentColor}
+        onClose={() => setLyricsVisible(false)}
+      />
+
+      <QueueModal
+        visible={queueVisible}
+        accentColor={songTheme.accentColor}
+        onClose={() => setQueueVisible(false)}
+      />
     </View>
   );
 };

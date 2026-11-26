@@ -14,6 +14,7 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(
     isCurrentSong,
     isPlayingCurrent,
     imageUrl,
+    songTitle,
     artistName,
     handlePlay,
     handleAddToPlaylist,
@@ -65,7 +66,7 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(
         }`}
         numberOfLines={1}
       >
-        {song.name}
+        {songTitle}
       </Text>
       <Text className="text-xs text-white/60 mt-0.5" numberOfLines={1}>
         {artistName}

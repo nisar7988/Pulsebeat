@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import TrackPlayer, {
   AppKilledPlaybackBehavior,
   Capability,
@@ -5,6 +6,7 @@ import TrackPlayer, {
   RepeatMode,
   State,
   type AddTrack,
+  type Track,
 } from 'react-native-track-player';
 import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
@@ -107,11 +109,26 @@ export const initializePlayer = async () => {
   }
 };
 
+export function decodeHtmlEntities(text?: string | null): string {
+  if (!text) return '';
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+export const getSongTitle = (song?: Song | null): string => {
+  if (!song?.name) return 'Unknown Track';
+  return decodeHtmlEntities(song.name);
+};
+
 export const getSongArtistName = (song?: Song | null): string => {
   if (!song) return 'Unknown Artist';
-  const primary = song.artists?.primary?.map((a) => a.name).join(', ');
+  const primary = song.artists?.primary?.map((a) => decodeHtmlEntities(a.name)).filter(Boolean).join(', ');
   if (primary) return primary;
-  const all = song.artists?.all?.map((a) => a.name).join(', ');
+  const all = song.artists?.all?.map((a) => decodeHtmlEntities(a.name)).filter(Boolean).join(', ');
   if (all) return all;
   return 'Unknown Artist';
 };
@@ -245,7 +262,7 @@ export const playSong = async (song?: Song) => {
         await TrackPlayer.play();
       }
       const queue = await TrackPlayer.getQueue().catch(() => []);
-      if (queue.length <= 1) {
+      if (queue.length <= 1 && useUserStore.getState().autoPlay) {
         appendRelatedTracks(currentSong.id).catch(() => {});
       }
       return;
@@ -280,7 +297,7 @@ export const playSong = async (song?: Song) => {
       await TrackPlayer.add({
         id: currentSong.id,
         url: audioUrl,
-        title: currentSong.name,
+        title: getSongTitle(currentSong),
         artist: artistName,
         artwork: artwork,
         duration: currentSong.duration || undefined,
@@ -288,10 +305,17 @@ export const playSong = async (song?: Song) => {
 
       await TrackPlayer.play();
       useListeningStore.getState().recordPlay(currentSong);
-      appendRelatedTracks(currentSong.id).catch(() => {});
+      if (useUserStore.getState().autoPlay) {
+        appendRelatedTracks(currentSong.id).catch(() => {});
+      }
     } else {
       // Stop previous track so it does not keep playing in the background
       await TrackPlayer.stop();
+      useCurrentSongStore.getState().setIsPlaying(false);
+      Alert.alert(
+        'Track Unavailable',
+        `Unable to stream "${getSongTitle(currentSong)}" right now. Please try another song.`,
+      );
       console.log('No playable audio URL found for song:', currentSong.id);
     }
   } catch (err) {
@@ -516,5 +540,77 @@ export const toggleRepeatMode = async (): Promise<boolean> => {
   } catch (e) {
     console.log('Toggle repeat error:', e);
     return useCurrentSongStore.getState().isRepeat;
+  }
+};
+
+function trackToSong(track: Track): Song {
+  const matched = findSongById(track.id);
+  if (matched) return matched;
+  return {
+    id: String(track.id || track.url || Math.random()),
+    name: String(track.title || 'Unknown Track'),
+    artists: {
+      primary: [{ id: '', name: String(track.artist || 'Unknown Artist'), url: '' }],
+      featured: [],
+      all: [{ id: '', name: String(track.artist || 'Unknown Artist'), url: '' }],
+    },
+    image: track.artwork
+      ? [{ quality: '500x500', url: String(track.artwork) }]
+      : [],
+    album: { id: '', name: String(track.album || ''), url: '' },
+    downloadUrl: track.url ? [{ quality: '320kbps', url: String(track.url) }] : [],
+    copyright: '',
+    duration: Number(track.duration) || 0,
+    explicitContent: false,
+    hasLyrics: false,
+    label: '',
+    language: '',
+    lyricsId: null,
+    playCount: 0,
+    releaseDate: null,
+    type: 'song',
+    url: '',
+    year: '',
+  };
+}
+
+export const getQueueSongs = async (): Promise<{
+  songs: Song[];
+  activeIndex: number;
+}> => {
+  try {
+    await initializePlayer();
+    const [queue, activeIdx] = await Promise.all([
+      TrackPlayer.getQueue(),
+      TrackPlayer.getActiveTrackIndex(),
+    ]);
+    return {
+      songs: queue.map(trackToSong),
+      activeIndex: typeof activeIdx === 'number' ? activeIdx : -1,
+    };
+  } catch (e) {
+    console.log('getQueueSongs error:', e);
+    return { songs: [], activeIndex: -1 };
+  }
+};
+
+export const skipToQueueIndex = async (index: number): Promise<void> => {
+  try {
+    await initializePlayer();
+    await TrackPlayer.skip(index);
+    await TrackPlayer.play();
+    syncPlaybackWidget();
+  } catch (e) {
+    console.log('skipToQueueIndex error:', e);
+  }
+};
+
+export const removeFromQueue = async (index: number): Promise<void> => {
+  try {
+    await initializePlayer();
+    await TrackPlayer.remove(index);
+    syncPlaybackWidget();
+  } catch (e) {
+    console.log('removeFromQueue error:', e);
   }
 };

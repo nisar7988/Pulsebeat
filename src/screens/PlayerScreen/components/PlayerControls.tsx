@@ -94,7 +94,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
       <View className="absolute top-[185px] left-6 right-6 h-[120px] items-center justify-center">
         {/* Skip Back blob */}
         <TouchableOpacity
-          className="absolute top-7 left-0 w-[110px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
+          className="absolute top-7 left-0 w-[70px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
           onPress={onPrevious}
           activeOpacity={0.7}
         >
@@ -102,13 +102,12 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
             name="skip-back"
             size={20}
             color={theme.colors.text.DEFAULT}
-            className="mr-[18px]"
           />
         </TouchableOpacity>
 
         {/* Skip Forward blob */}
         <TouchableOpacity
-          className="absolute top-7 right-0 w-[110px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
+          className="absolute top-7 right-0 w-[70px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
           onPress={onNext}
           activeOpacity={0.7}
         >
@@ -116,7 +115,6 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
             name="skip-forward"
             size={20}
             color={theme.colors.text.DEFAULT}
-            className="ml-[18px]"
           />
         </TouchableOpacity>
 

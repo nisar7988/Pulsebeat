@@ -6,6 +6,7 @@ export interface LanguageOption {
 
 export interface GenreOption {
   id: string;
+  canonical: string;
   name: string;
   icon: string;
   gradient: [string, string];
@@ -35,18 +36,18 @@ export const LANGUAGES: LanguageOption[] = [
 ];
 
 export const GENRES: GenreOption[] = [
-  { id: 'pop', name: 'Pop Hits', icon: 'music', gradient: ['#EC4899', '#8B5CF6'] },
-  { id: 'hiphop', name: 'Hip Hop & Rap', icon: 'disc', gradient: ['#F59E0B', '#EF4444'] },
-  { id: 'electronic', name: 'EDM / Dance', icon: 'zap', gradient: ['#22D3EE', '#6366F1'] },
-  { id: 'rock', name: 'Rock & Alt', icon: 'activity', gradient: ['#EF4444', '#7C3AED'] },
-  { id: 'rnb', name: 'R&B & Soul', icon: 'heart', gradient: ['#A855F7', '#EC4899'] },
-  { id: 'lofi', name: 'Chill & Lo-Fi', icon: 'headphones', gradient: ['#06B6D4', '#3B82F6'] },
-  { id: 'bollywood', name: 'Bollywood Hits', icon: 'star', gradient: ['#F43F5E', '#FB923C'] },
-  { id: 'indie', name: 'Indie & Folk', icon: 'feather', gradient: ['#10B981', '#06B6D4'] },
-  { id: 'latin', name: 'Latin Reggaeton', icon: 'radio', gradient: ['#EA580C', '#E11D48'] },
-  { id: 'classical', name: 'Classical & Piano', icon: 'volume-2', gradient: ['#6366F1', '#A855F7'] },
-  { id: 'jazz', name: 'Jazz & Blues', icon: 'coffee', gradient: ['#D97706', '#B45309'] },
-  { id: 'metal', name: 'Metal & Heavy', icon: 'shield', gradient: ['#475569', '#1E293B'] },
+  { id: 'pop', canonical: 'Pop', name: 'Pop Hits', icon: 'music', gradient: ['#EC4899', '#8B5CF6'] },
+  { id: 'hiphop', canonical: 'Hip-Hop', name: 'Hip Hop & Rap', icon: 'disc', gradient: ['#F59E0B', '#EF4444'] },
+  { id: 'electronic', canonical: 'Electronic', name: 'EDM / Dance', icon: 'zap', gradient: ['#22D3EE', '#6366F1'] },
+  { id: 'rock', canonical: 'Rock', name: 'Rock & Alt', icon: 'activity', gradient: ['#EF4444', '#7C3AED'] },
+  { id: 'rnb', canonical: 'R&B', name: 'R&B & Soul', icon: 'heart', gradient: ['#A855F7', '#EC4899'] },
+  { id: 'lofi', canonical: 'Lo-Fi', name: 'Chill & Lo-Fi', icon: 'headphones', gradient: ['#06B6D4', '#3B82F6'] },
+  { id: 'bollywood', canonical: 'Bollywood', name: 'Bollywood Hits', icon: 'star', gradient: ['#F43F5E', '#FB923C'] },
+  { id: 'indie', canonical: 'Indie', name: 'Indie & Folk', icon: 'feather', gradient: ['#10B981', '#06B6D4'] },
+  { id: 'latin', canonical: 'Latin', name: 'Latin Reggaeton', icon: 'radio', gradient: ['#EA580C', '#E11D48'] },
+  { id: 'classical', canonical: 'Classical', name: 'Classical & Piano', icon: 'volume-2', gradient: ['#6366F1', '#A855F7'] },
+  { id: 'jazz', canonical: 'Jazz', name: 'Jazz & Blues', icon: 'coffee', gradient: ['#D97706', '#B45309'] },
+  { id: 'metal', canonical: 'Metal', name: 'Metal & Heavy', icon: 'shield', gradient: ['#475569', '#1E293B'] },
 ];
 
 export const ARTISTS: ArtistOption[] = [

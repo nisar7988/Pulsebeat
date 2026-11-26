@@ -25,8 +25,8 @@ export const MUSIC_API = {
   // Playlists
   playlist: `${BASE_URL}/playlists?id={playlistId}`,
 
-  // Lyrics
-  lyrics: `${BASE_URL}/lyrics?id={songId}`,
+  // Lyrics (LRCLIB public API)
+  lyrics: `https://lrclib.net/api/search`,
 
   // Browse
   modules: `${BASE_URL}/modules?language={language}`,
