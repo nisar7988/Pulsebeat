@@ -101,12 +101,37 @@ export function getContrastTextColor(hex: string): string {
   return getRelativeLuminance(hex) > 0.42 ? '#0B1309' : '#FFFFFF';
 }
 
-function ensureVividAccent(hex: string): string {
-  const normalized = normalizeHex(hex) ?? DEFAULT_RAW_COLORS.accent;
+export function ensureVividAccent(
+  hex?: string | null,
+  fallbackHex: string = DEFAULT_RAW_COLORS.accent,
+): string {
+  const normalized = hex ? normalizeHex(hex) : null;
+  if (!normalized || normalized.toUpperCase() === DEFAULT_PLAYER_BG) {
+    return fallbackHex;
+  }
   const lum = getRelativeLuminance(normalized);
+  // Near-black colors have too little chroma to brighten cleanly; use vivid fallback
+  if (lum < 0.04) return fallbackHex;
   if (lum < 0.16) return adjustColor(normalized, 0.32);
   if (lum < 0.28) return adjustColor(normalized, 0.16);
   return normalized;
+}
+
+function pickValidColor(
+  candidates: Array<string | undefined>,
+  minLuminance = 0,
+): string | undefined {
+  for (const candidate of candidates) {
+    const normalized = candidate ? normalizeHex(candidate) : null;
+    if (
+      normalized &&
+      normalized.toUpperCase() !== DEFAULT_PLAYER_BG &&
+      getRelativeLuminance(normalized) >= minLuminance
+    ) {
+      return normalized;
+    }
+  }
+  return undefined;
 }
 
 export async function extractRawSongColors(
@@ -134,16 +159,39 @@ export async function extractRawSongColors(
     let accent: string = DEFAULT_RAW_COLORS.accent;
 
     if (result.platform === 'android') {
-      primary = result.dominant || result.vibrant || primary;
-      secondary = result.darkVibrant || result.average || secondary;
-      accent = result.lightVibrant || result.vibrant || accent;
+      primary =
+        pickValidColor([result.dominant, result.vibrant, result.muted]) ??
+        primary;
+      secondary =
+        pickValidColor([result.darkVibrant, result.average, result.darkMuted]) ??
+        secondary;
+      accent =
+        pickValidColor(
+          [
+            result.lightVibrant,
+            result.vibrant,
+            result.lightMuted,
+            result.muted,
+            result.dominant,
+          ],
+          0.04,
+        ) ?? accent;
     } else if (result.platform === 'ios') {
-      primary = result.primary || primary;
-      secondary = result.secondary || secondary;
-      accent = result.detail || accent;
+      primary = pickValidColor([result.primary, result.background]) ?? primary;
+      secondary =
+        pickValidColor([result.secondary, result.background]) ?? secondary;
+      accent =
+        pickValidColor(
+          [result.detail, result.secondary, result.primary],
+          0.04,
+        ) ?? accent;
     }
 
-    const palette = { primary, secondary, accent };
+    const palette = {
+      primary,
+      secondary,
+      accent: ensureVividAccent(accent),
+    };
     paletteCache.set(imageUrl, palette);
     return palette;
   } catch (e) {

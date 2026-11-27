@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { Song } from '../../types/song';
 import { useAppTheme } from '../../theme';
-import { hexToRgba } from '../../theme/songPalette';
+import { ensureVividAccent, hexToRgba } from '../../theme/songPalette';
 import { useDownloadStore } from '../../store/useDownloadStore';
 import {
   cancelDownload,
@@ -34,7 +34,9 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(({
   className = '',
 }) => {
   const { theme } = useAppTheme();
-  const resolvedAccentColor = accentColor ?? theme.colors.accent.DEFAULT;
+  const resolvedAccentColor = accentColor
+    ? ensureVividAccent(accentColor, theme.colors.accent.DEFAULT)
+    : theme.colors.accent.DEFAULT;
   const isDownloaded = useDownloadStore((state) =>
     Boolean(state.downloads[song.id]),
   );
@@ -81,8 +83,8 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(({
   const customDownloadedStyle =
     isDownloaded && accentColor
       ? {
-          borderColor: hexToRgba(accentColor, 0.55),
-          backgroundColor: hexToRgba(accentColor, 0.2),
+          borderColor: hexToRgba(resolvedAccentColor, 0.55),
+          backgroundColor: hexToRgba(resolvedAccentColor, 0.2),
         }
       : undefined;
 

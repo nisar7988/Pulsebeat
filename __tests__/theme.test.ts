@@ -14,11 +14,22 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+jest.mock('react-native-image-colors', () => ({
+  getColors: jest.fn(),
+}));
+
+import { getColors } from 'react-native-image-colors';
 import {
   getThemePreset,
   THEME_PRESETS,
   type ThemePresetId,
 } from '../src/theme/presets';
+import {
+  DEFAULT_PLAYER_BG,
+  DEFAULT_RAW_COLORS,
+  ensureVividAccent,
+  extractRawSongColors,
+} from '../src/theme/songPalette';
 import { useUserStore } from '../src/store/useUserStore';
 
 describe('theme presets and user preference', () => {
@@ -57,5 +68,40 @@ describe('theme presets and user preference', () => {
       expect(useUserStore.getState().themeId).toBe(id);
       expect(getThemePreset(useUserStore.getState().themeId).id).toBe(id);
     }
+  });
+
+  test('ensureVividAccent rejects black and fallback colors', () => {
+    expect(ensureVividAccent('#000000', '#38BDF8')).toBe('#38BDF8');
+    expect(ensureVividAccent(DEFAULT_PLAYER_BG, '#38BDF8')).toBe('#38BDF8');
+    expect(ensureVividAccent('#080808')).toBe(DEFAULT_RAW_COLORS.accent);
+    expect(ensureVividAccent('#C8F929')).toBe('#C8F929');
+  });
+
+  test('extractRawSongColors skips fallback/black accent swatches', async () => {
+    (getColors as jest.Mock).mockResolvedValueOnce({
+      platform: 'android',
+      dominant: '#18241A',
+      vibrant: DEFAULT_PLAYER_BG,
+      darkVibrant: DEFAULT_PLAYER_BG,
+      lightVibrant: DEFAULT_PLAYER_BG,
+      lightMuted: DEFAULT_PLAYER_BG,
+      muted: DEFAULT_PLAYER_BG,
+      darkMuted: DEFAULT_PLAYER_BG,
+      average: '#18241A',
+    });
+
+    const androidPalette = await extractRawSongColors('https://example.com/dark-art.jpg');
+    expect(androidPalette.accent).toBe(DEFAULT_RAW_COLORS.accent);
+
+    (getColors as jest.Mock).mockResolvedValueOnce({
+      platform: 'ios',
+      background: '#050505',
+      primary: '#1E293B',
+      secondary: '#38BDF8',
+      detail: '#000000',
+    });
+
+    const iosPalette = await extractRawSongColors('https://example.com/ios-dark-detail.jpg');
+    expect(iosPalette.accent).toBe('#38BDF8');
   });
 });
