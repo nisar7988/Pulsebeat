@@ -14,6 +14,8 @@ const PROGRESS_SYNC_THROTTLE_MS = 1800;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let lastProgressSyncAt = 0;
 let updateInFlight = false;
+let hasPendingUpdate = false;
+let pendingProgressOverride: { position: number; duration: number } | undefined;
 
 export function buildPulseBeatWidgetElement(
   widgetInfo: Pick<WidgetInfo, 'width' | 'height'>,
@@ -43,7 +45,11 @@ async function performWidgetUpdate(progressOverride?: {
   position: number;
   duration: number;
 }): Promise<void> {
-  if (updateInFlight) return;
+  if (updateInFlight) {
+    hasPendingUpdate = true;
+    pendingProgressOverride = progressOverride;
+    return;
+  }
   updateInFlight = true;
   try {
     const snapshot = await getWidgetPlaybackState(progressOverride);
@@ -55,6 +61,12 @@ async function performWidgetUpdate(progressOverride?: {
     console.log('syncPlaybackWidget error:', e);
   } finally {
     updateInFlight = false;
+    if (hasPendingUpdate) {
+      const nextOverride = pendingProgressOverride;
+      hasPendingUpdate = false;
+      pendingProgressOverride = undefined;
+      performWidgetUpdate(nextOverride).catch(() => {});
+    }
   }
 }
 

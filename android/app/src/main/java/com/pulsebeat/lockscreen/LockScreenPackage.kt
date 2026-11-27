@@ -7,7 +7,10 @@ import com.facebook.react.uimanager.ViewManager
 
 class LockScreenPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-    listOf(LockScreenModule(reactContext))
+    listOf(
+      LockScreenModule(reactContext),
+      AudioInterruptionModule(reactContext),
+    )
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
     emptyList()

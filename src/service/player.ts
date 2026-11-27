@@ -1,4 +1,10 @@
-import { Alert } from 'react-native';
+import {
+  Alert,
+  AppState,
+  NativeEventEmitter,
+  NativeModules,
+  Platform,
+} from 'react-native';
 import TrackPlayer, {
   AppKilledPlaybackBehavior,
   Capability,
@@ -103,7 +109,50 @@ function registerPlaybackStateSync() {
     }
     syncPlaybackWidget();
   });
+
+  if (Platform.OS === 'android' && NativeModules.AudioInterruptionModule) {
+    const emitter = new NativeEventEmitter(NativeModules.AudioInterruptionModule);
+    emitter.addListener('AudioInterruption', (event: { active?: boolean }) => {
+      if (event?.active) {
+        pauseSong().catch(() => {});
+      }
+    });
+  }
+
+  AppState.addEventListener('change', async () => {
+    try {
+      const interrupted =
+        Platform.OS === 'android' &&
+        NativeModules.AudioInterruptionModule?.isInterruptionActive
+          ? await NativeModules.AudioInterruptionModule.isInterruptionActive()
+          : false;
+      if (interrupted) {
+        await pauseSong();
+        return;
+      }
+      await syncPlayingFromNative();
+      syncPlaybackWidget();
+    } catch {
+      // Ignore state reconciliation errors
+    }
+  });
 }
+
+const playerOptions = {
+  capabilities: [
+    Capability.Play,
+    Capability.Pause,
+    Capability.SkipToNext,
+    Capability.SkipToPrevious,
+    Capability.SeekTo,
+  ],
+  compactCapabilities: [Capability.Play, Capability.Pause],
+  progressUpdateEventInterval: 2,
+  android: {
+    appKilledPlaybackBehavior: AppKilledPlaybackBehavior.PausePlayback,
+    alwaysPauseOnInterruption: true,
+  },
+};
 
 export const initializePlayer = async () => {
   if (isPlayerInitialized) return;
@@ -114,20 +163,7 @@ export const initializePlayer = async () => {
     await TrackPlayer.setupPlayer({
       autoHandleInterruptions: true,
     });
-    await TrackPlayer.updateOptions({
-      capabilities: [
-        Capability.Play,
-        Capability.Pause,
-        Capability.SkipToNext,
-        Capability.SkipToPrevious,
-        Capability.SeekTo,
-      ],
-      compactCapabilities: [Capability.Play, Capability.Pause],
-      progressUpdateEventInterval: 2,
-      android: {
-        appKilledPlaybackBehavior: AppKilledPlaybackBehavior.PausePlayback,
-      },
-    });
+    await TrackPlayer.updateOptions(playerOptions);
     registerPlaybackStateSync();
     const repeatEnabled = useUserStore.getState().repeatByDefault;
     if (repeatEnabled) {
@@ -140,6 +176,7 @@ export const initializePlayer = async () => {
       error?.message?.includes('already been initialized') ||
       String(error).includes('already')
     ) {
+      await TrackPlayer.updateOptions(playerOptions).catch(() => {});
       registerPlaybackStateSync();
       isPlayerInitialized = true;
     } else {
@@ -565,6 +602,28 @@ export const seekTo = async (position: number) => {
     syncPlaybackWidget();
   } catch (e) {
     console.log('Seek error:', e);
+  }
+};
+
+export const seekBy = async (offset: number) => {
+  try {
+    await initializePlayer();
+    const progress =
+      typeof TrackPlayer.getProgress === 'function'
+        ? await TrackPlayer.getProgress().catch(() => ({
+            position: 0,
+            duration: 0,
+          }))
+        : { position: 0, duration: 0 };
+    const rawTarget = progress.position + offset;
+    const target =
+      progress.duration > 0
+        ? Math.max(0, Math.min(progress.duration, rawTarget))
+        : Math.max(0, rawTarget);
+    await TrackPlayer.seekTo(target);
+    syncPlaybackWidget();
+  } catch (e) {
+    console.log('Seek by error:', e);
   }
 };
 
