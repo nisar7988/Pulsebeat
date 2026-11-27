@@ -6,10 +6,10 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme';
 
-export const GLASS_TAB_BAR_HEIGHT = 72;
+export const GLASS_TAB_BAR_HEIGHT = 62;
 
 export const getSafeBottomOffset = (bottomInset: number) =>
-  Math.max(bottomInset + 7, 20);
+  Math.max(bottomInset, 16);
 
 const ICONS: Record<string, string> = {
   Home: 'home',
@@ -18,12 +18,10 @@ const ICONS: Record<string, string> = {
   Profile: 'user',
 };
 
-const GlassTabBar = ({ state, navigation, insets }: BottomTabBarProps) => {
+const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
   const { theme, preset } = useAppTheme();
   const { bottom: safeBottomInset } = useSafeAreaInsets();
-  const bottomOffset = getSafeBottomOffset(
-    Math.max(insets?.bottom ?? 0, safeBottomInset),
-  );
+  const bottomOffset = getSafeBottomOffset(safeBottomInset);
   const [layouts, setLayouts] = useState<Record<number, LayoutRectangle>>({});
   const translateX = useRef(new Animated.Value(0)).current;
 
@@ -48,7 +46,10 @@ const GlassTabBar = ({ state, navigation, insets }: BottomTabBarProps) => {
       style={{ bottom: bottomOffset }}
       pointerEvents="box-none"
     >
-      <View className="flex-row rounded-[36px] overflow-hidden border border-glass-border p-2 gap-2.5">
+      <View
+        className="flex-row overflow-hidden border border-glass-border"
+        style={styles.pill}
+      >
         {Platform.OS === 'ios' ? (
           <BlurView
             style={StyleSheet.absoluteFill}
@@ -102,7 +103,8 @@ const GlassTabBar = ({ state, navigation, insets }: BottomTabBarProps) => {
               key={route.key}
               onPress={onPress}
               activeOpacity={0.8}
-              className="w-[54px] h-[54px] items-center justify-center"
+              style={styles.tabButton}
+              className="items-center justify-center"
               onLayout={(e) => {
                 const { layout } = e.nativeEvent;
                 setLayouts((prev) => ({ ...prev, [index]: layout }));
@@ -110,7 +112,7 @@ const GlassTabBar = ({ state, navigation, insets }: BottomTabBarProps) => {
             >
               <Feather
                 name={ICONS[route.name] ?? 'circle'}
-                size={24}
+                size={22}
                 color={focused ? theme.colors.accent.DEFAULT : theme.colors.text.muted}
               />
             </TouchableOpacity>
@@ -120,5 +122,17 @@ const GlassTabBar = ({ state, navigation, insets }: BottomTabBarProps) => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  pill: {
+    padding: 6,
+    gap: 8,
+    borderRadius: 31,
+  },
+  tabButton: {
+    width: 48,
+    height: 48,
+  },
+});
 
 export default GlassTabBar;

@@ -71,7 +71,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   const effectiveHasTabBar = hasTabBar && bottomOffsetClass !== 'bottom-6';
   const bottomPosition =
     getSafeBottomOffset(safeBottomInset) +
-    (effectiveHasTabBar ? GLASS_TAB_BAR_HEIGHT + 10 : 0);
+    (effectiveHasTabBar ? GLASS_TAB_BAR_HEIGHT + 8 : 0);
 
   const activeTrack = useActiveTrack();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
