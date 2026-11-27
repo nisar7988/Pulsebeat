@@ -1,14 +1,10 @@
 import React from 'react';
 import {
   Image,
-  Platform,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { BlurView } from '@react-native-community/blur';
-import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,6 +28,7 @@ import { useAppTheme } from '../../theme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 import { useOptimisticPlayback } from '../../hooks/useOptimisticPlayback';
 import { GLASS_TAB_BAR_HEIGHT, getSafeBottomOffset } from './GlassTabBar';
+import { LiquidGlassBackdrop } from './LiquidGlassBackdrop';
 
 export interface GlassMiniPlayerProps {
   fallbackSong?: Song;
@@ -63,7 +60,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   bottomOffsetClass,
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { theme, preset } = useAppTheme();
+  const { theme } = useAppTheme();
   const { bottom: safeBottomInset } = useSafeAreaInsets();
   const isCustomClass = Boolean(
     bottomOffsetClass && bottomOffsetClass !== 'bottom-6',
@@ -162,31 +159,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
       style={isCustomClass ? undefined : { bottom: bottomPosition }}
     >
       {/* Glass Frost Background */}
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          style={StyleSheet.absoluteFill}
-          blurType="light"
-          blurAmount={25}
-          overlayColor="transparent"
-          reducedTransparencyFallbackColor={theme.colors.glass.fallback}
-        />
-      ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: `rgba(${preset.rgb.bgSurface.replace(/\s+/g, ', ')}, 0.92)`,
-            },
-          ]}
-        />
-      )}
-      <View className="absolute inset-0 bg-glass-tint" />
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.16)', 'rgba(255, 255, 255, 0.04)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <LiquidGlassBackdrop />
 
       {/* Main Content */}
       <View className="flex-row items-center justify-between p-2.5">

@@ -484,7 +484,7 @@ export const OnboardingScreen = () => {
             activeOpacity={0.85}
             disabled={!stepMeta.canContinue}
             onPress={handleNext}
-            className={`flex-1 h-15 rounded-full overflow-hidden items-center justify-center relative shadow-md shadow-accent/40 ${
+            className={`flex-1 h-12 rounded-full overflow-hidden items-center justify-center relative shadow-md shadow-accent/40 ${
               !stepMeta.canContinue ? 'opacity-50' : ''
             }`}
           >
@@ -495,7 +495,7 @@ export const OnboardingScreen = () => {
               style={StyleSheet.absoluteFill}
             />
             <View className="flex-row items-center gap-2">
-              <Text className="text-base font-extrabold text-text-dark tracking-wide">
+              <Text className="text-base font-extrabold text-text-dark tracking-wide text-lg">
                 {stepMeta.cta}
               </Text>
               <Feather

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, LayoutRectangle, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, LayoutRectangle, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { BlurView } from '@react-native-community/blur';
+import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme';
+import { LiquidGlassBackdrop, rgbTokenToCommaList } from './LiquidGlassBackdrop';
 
 export const GLASS_TAB_BAR_HEIGHT = 62;
 
@@ -39,36 +40,36 @@ const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
   }, [state.index, layouts, translateX]);
 
   const activeLayout = layouts[state.index];
+  const bgRgb = rgbTokenToCommaList(preset.rgb.bg);
+  const scrimHeight = bottomOffset + GLASS_TAB_BAR_HEIGHT + 12;
 
   return (
     <View
-      className="absolute left-0 right-0 items-center"
-      style={{ bottom: bottomOffset }}
+      className="absolute left-0 right-0 bottom-0 items-center"
+      style={{ paddingBottom: bottomOffset }}
       pointerEvents="box-none"
     >
+      {/* Smooth ambient bottom scrim so scrolling cards beside the pill fade cleanly */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[
+          `rgba(${bgRgb}, 0)`,
+          `rgba(${bgRgb}, 0.42)`,
+          `rgba(${bgRgb}, 0.82)`,
+          `rgba(${bgRgb}, 0.94)`,
+          `rgba(${bgRgb}, 0.98)`,
+        ]}
+        locations={[0, 0.18, 0.42, 0.68, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.bottomScrim, { height: scrimHeight }]}
+      />
+
       <View
         className="flex-row overflow-hidden border border-glass-border"
         style={styles.pill}
       >
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            style={StyleSheet.absoluteFill}
-            blurType="light"
-            blurAmount={25}
-            overlayColor="transparent"
-            reducedTransparencyFallbackColor={theme.colors.glass.fallback}
-          />
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: `rgba(${preset.rgb.bgSurface.replace(/\s+/g, ', ')}, 0.92)`,
-              },
-            ]}
-          />
-        )}
-        <View className="absolute inset-0 bg-glass-tint" />
+        <LiquidGlassBackdrop />
 
         {/* sliding indicator */}
         {activeLayout && (
@@ -124,6 +125,12 @@ const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
 };
 
 const styles = StyleSheet.create({
+  bottomScrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   pill: {
     padding: 6,
     gap: 8,
