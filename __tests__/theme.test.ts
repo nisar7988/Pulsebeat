@@ -32,6 +32,9 @@ describe('theme presets and user preference', () => {
 
     for (const preset of THEME_PRESETS) {
       expect(preset.previewColors).toHaveLength(3);
+      expect(preset.colors.background.player).toMatch(/^#[0-9A-F]{6}$/);
+      expect(preset.colors.accent.DEFAULT).toMatch(/^#[0-9A-F]{6}$/);
+      expect(preset.colors.text.dark).toMatch(/^#[0-9A-F]{6}$/);
       expect(preset.cssVars['--color-bg']).toMatch(/^\d+\s+\d+\s+\d+$/);
       expect(preset.cssVars['--color-accent']).toMatch(/^\d+\s+\d+\s+\d+$/);
       expect(preset.cssVars['--color-text-dark']).toMatch(/^\d+\s+\d+\s+\d+$/);

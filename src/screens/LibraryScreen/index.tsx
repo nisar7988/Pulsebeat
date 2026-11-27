@@ -353,7 +353,7 @@ export default function LibraryScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerClassName="pt-3 pb-48"
+          contentContainerClassName="pt-3 pb-56"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

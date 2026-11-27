@@ -595,7 +595,7 @@ export default function HomeScreen() {
         renderItem={renderTrendingSong}
         ListHeaderComponent={listHeader}
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="pb-48"
+        contentContainerClassName="pb-56"
         initialNumToRender={6}
         maxToRenderPerBatch={6}
         windowSize={5}

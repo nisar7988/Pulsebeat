@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
-import { useAppTheme } from '../../../theme';
+import { theme } from '../../../theme';
+import { getContrastTextColor, hexToRgba } from '../../../theme/songPalette';
 
 export interface PlayerControlsProps {
   isPlaying: boolean;
@@ -29,11 +30,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
   liked = false,
   isShuffle = false,
   isRepeat = false,
-  accentColor,
-  orbGradient,
-  glowColor,
-  fanColor: _fanColor,
-  ringColor,
+  accentColor = theme.colors.accent.DEFAULT,
+  orbGradient = [...theme.gradients.orb],
+  glowColor = theme.colors.accent.glow,
+  fanColor: _fanColor = theme.colors.playerUi.fan,
+  ringColor = theme.colors.playerUi.ring,
   onTogglePlayback,
   onPrevious,
   onNext,
@@ -41,57 +42,56 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
   onToggleShuffle,
   onToggleRepeat,
 }) => {
-  const { theme } = useAppTheme();
-  const resolvedAccent = accentColor ?? theme.colors.accent.DEFAULT;
-  const resolvedOrbGradient = orbGradient ?? [...theme.gradients.orb];
-  const resolvedGlow = glowColor ?? theme.colors.accent.glow;
-  const resolvedRing = ringColor ?? theme.colors.playerUi.ring;
+  const activeModeStyle = {
+    borderColor: accentColor,
+    backgroundColor: hexToRgba(accentColor, 0.2),
+  };
+  const playIconColor = getContrastTextColor(accentColor);
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Heart button */}
       <TouchableOpacity
-        className="absolute top-[78px] self-center h-9 w-9 rounded-full border border-glass-border bg-glass-tint items-center justify-center"
+        className="absolute top-[78px] self-center h-9 w-9 rounded-full border border-glass-border-light bg-glass-tint items-center justify-center"
         onPress={onToggleLike}
         activeOpacity={0.7}
       >
         <Feather
           name="heart"
           size={18}
-          color={liked ? resolvedAccent : theme.colors.text.DEFAULT}
+          color={liked ? accentColor : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
 
       {/* Shuffle */}
       <TouchableOpacity
         className={`absolute top-[135px] left-7 h-[38px] w-[38px] rounded-full border items-center justify-center ${
-          isShuffle
-            ? 'border-accent bg-accent/20'
-            : 'border-glass-border-subtle bg-glass-tint'
+          isShuffle ? '' : 'border-glass-border-subtle bg-glass-tint'
         }`}
+        style={isShuffle ? activeModeStyle : undefined}
         onPress={onToggleShuffle}
         activeOpacity={0.7}
       >
         <Feather
           name="shuffle"
           size={17}
-          color={isShuffle ? resolvedAccent : theme.colors.text.DEFAULT}
+          color={isShuffle ? accentColor : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
 
       {/* Repeat */}
       <TouchableOpacity
         className={`absolute top-[135px] right-7 h-[38px] w-[38px] rounded-full border items-center justify-center ${
-          isRepeat
-            ? 'border-accent bg-accent/20'
-            : 'border-glass-border-subtle bg-glass-tint'
+          isRepeat ? '' : 'border-glass-border-subtle bg-glass-tint'
         }`}
+        style={isRepeat ? activeModeStyle : undefined}
         onPress={onToggleRepeat}
         activeOpacity={0.7}
       >
         <Feather
           name="repeat"
           size={17}
-          color={isRepeat ? resolvedAccent : theme.colors.text.DEFAULT}
+          color={isRepeat ? accentColor : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
 
@@ -99,7 +99,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
       <View className="absolute top-[185px] left-6 right-6 h-[120px] items-center justify-center">
         {/* Skip Back blob */}
         <TouchableOpacity
-          className="absolute top-7 left-0 w-[70px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
+          className="absolute top-7 left-0 w-[70px] h-16 rounded-[32px] border border-glass-border-light bg-glass-tint items-center justify-center"
           onPress={onPrevious}
           activeOpacity={0.7}
         >
@@ -112,7 +112,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
 
         {/* Skip Forward blob */}
         <TouchableOpacity
-          className="absolute top-7 right-0 w-[70px] h-16 rounded-[32px] border border-glass-border bg-glass-tint items-center justify-center"
+          className="absolute top-7 right-0 w-[70px] h-16 rounded-[32px] border border-glass-border-light bg-glass-tint items-center justify-center"
           onPress={onNext}
           activeOpacity={0.7}
         >
@@ -126,12 +126,12 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
         {/* Dark ring + artwork orb */}
         <View
           className="w-[124px] h-[124px] rounded-full items-center justify-center"
-          style={{ backgroundColor: resolvedRing }}
+          style={{ backgroundColor: ringColor }}
         >
           <View
             className="w-[100px] h-[100px] rounded-full overflow-hidden items-center justify-center"
             style={{
-              shadowColor: resolvedGlow,
+              shadowColor: glowColor,
               shadowOpacity: 0.8,
               shadowRadius: 20,
               elevation: 12,
@@ -139,20 +139,27 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
           >
             <Image source={{ uri: artwork }} className="absolute inset-0 h-full w-full" />
             <LinearGradient
-              colors={resolvedOrbGradient}
+              colors={orbGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
             />
             <TouchableOpacity
-              className="w-[60px] h-[60px] rounded-full bg-accent items-center justify-center shadow-lg shadow-accent/60"
+              className="w-[60px] h-[60px] rounded-full items-center justify-center"
+              style={{
+                backgroundColor: accentColor,
+                shadowColor: accentColor,
+                shadowOpacity: 0.6,
+                shadowRadius: 10,
+                elevation: 8,
+              }}
               onPress={onTogglePlayback}
               activeOpacity={0.85}
             >
               <Feather
                 name={isPlaying ? 'pause' : 'play'}
                 size={26}
-                color={theme.colors.text.dark}
+                color={playIconColor}
                 className={!isPlaying ? 'ml-[3px]' : undefined}
               />
             </TouchableOpacity>

@@ -317,7 +317,7 @@ export default function ArtistSongsScreen() {
         )}
       </SafeAreaView>
 
-      <GlassMiniPlayer bottomOffsetClass="bottom-6" />
+      <GlassMiniPlayer hasTabBar={false} />
     </View>
   );
 }

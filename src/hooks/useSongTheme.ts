@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useAppTheme } from '../theme';
+import { useEffect, useState } from 'react';
 import {
   adjustColor,
+  DEFAULT_PLAYER_BG,
+  DEFAULT_RAW_COLORS,
   extractRawSongColors,
   hexToRgba,
 } from '../theme/songPalette';
@@ -23,27 +24,32 @@ export interface PlayerTheme {
   ringColor: string;
 }
 
+const DEFAULT_THEME: PlayerTheme = {
+  primary: DEFAULT_RAW_COLORS.primary,
+  secondary: DEFAULT_RAW_COLORS.secondary,
+  accent: DEFAULT_RAW_COLORS.accent,
+  accentColor: DEFAULT_RAW_COLORS.accent,
+  background: DEFAULT_PLAYER_BG,
+  backgroundOverlay: [
+    'rgba(14, 26, 12, 0.60)',
+    'rgba(10, 18, 8, 0.85)',
+    'rgba(5, 10, 4, 0.95)',
+  ],
+  panelGradient: [
+    'rgba(19, 34, 16, 0.94)',
+    'rgba(12, 22, 10, 0.97)',
+    'rgba(7, 13, 6, 1)',
+  ],
+  orbGradient: ['rgba(200, 249, 41, 0.65)', 'rgba(34, 197, 94, 0.50)'],
+  progressColor: DEFAULT_RAW_COLORS.accent,
+  trackColor: 'rgba(10, 18, 8, 0.85)',
+  dotColor: DEFAULT_RAW_COLORS.accent,
+  glowColor: DEFAULT_RAW_COLORS.accent,
+  fanColor: 'rgba(200, 249, 41, 0.14)',
+  ringColor: 'rgba(200, 249, 41, 0.30)',
+};
+
 export function useSongTheme(imageUrl: string | undefined): PlayerTheme {
-  const { theme } = useAppTheme();
-  const baseTheme = useMemo<PlayerTheme>(
-    () => ({
-      primary: theme.colors.primary.dark,
-      secondary: theme.colors.secondary.dark,
-      accent: theme.colors.accent.DEFAULT,
-      accentColor: theme.colors.accent.DEFAULT,
-      background: theme.colors.background.player,
-      backgroundOverlay: [...theme.gradients.playerOverlay],
-      panelGradient: [...theme.gradients.panel],
-      orbGradient: [...theme.gradients.orb],
-      progressColor: theme.colors.accent.DEFAULT,
-      trackColor: theme.colors.playerUi.trackBg,
-      dotColor: theme.colors.accent.DEFAULT,
-      glowColor: theme.colors.accent.glow,
-      fanColor: theme.colors.playerUi.fan,
-      ringColor: theme.colors.playerUi.ring,
-    }),
-    [theme],
-  );
   const [extractedTheme, setExtractedTheme] = useState<{
     imageUrl: string;
     theme: PlayerTheme;
@@ -108,5 +114,5 @@ export function useSongTheme(imageUrl: string | undefined): PlayerTheme {
   if (extractedTheme && extractedTheme.imageUrl === imageUrl) {
     return extractedTheme.theme;
   }
-  return baseTheme;
+  return DEFAULT_THEME;
 }

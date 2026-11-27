@@ -443,7 +443,7 @@ const SearchScreen = () => {
         <FlatList
           data={displayList}
           keyExtractor={(item, idx) => `${item.id}-${idx}`}
-          contentContainerClassName="pt-3 px-4 pb-48"
+          contentContainerClassName="pt-3 px-4 pb-56"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"

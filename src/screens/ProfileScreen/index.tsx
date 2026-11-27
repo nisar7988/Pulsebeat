@@ -19,7 +19,6 @@ import {
   ACTIVE_RELEASE_HASH,
   restart as restartStallion,
   sync as syncStallion,
-  useStallionModal,
   useStallionUpdate,
 } from 'react-native-stallion';
 
@@ -142,7 +141,6 @@ export default function ProfileScreen() {
   const [editArtistsModalVisible, setEditArtistsModalVisible] = useState(false);
   const [checkingOta, setCheckingOta] = useState(false);
   const { isRestartRequired, newReleaseBundle } = useStallionUpdate();
-  const { showModal: showStallionModal } = useStallionModal();
 
   const avatarPreset = useMemo(
     () => AVATAR_PRESETS.find((p) => p.id === avatarId) ?? AVATAR_PRESETS[0],
@@ -278,7 +276,7 @@ export default function ProfileScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerClassName="pt-3 pb-48"
+          contentContainerClassName="pt-3 pb-56"
         >
           {/* Top Bar */}
           <View className="px-5 mb-3 flex-row items-center justify-between">
@@ -861,15 +859,7 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={showStallionModal}
-                className="flex-1 py-2.5 rounded-xl border border-glass-border bg-white/10 items-center justify-center"
-              >
-                <Text className="text-xs font-semibold text-white">
-                  Stallion Console
-                </Text>
-              </TouchableOpacity>
+             
             </View>
           </View>
 

@@ -3,7 +3,13 @@ import { Animated, LayoutRectangle, Platform, StyleSheet, TouchableOpacity, View
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from '@react-native-community/blur';
 import Feather from 'react-native-vector-icons/Feather';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../../theme';
+
+export const GLASS_TAB_BAR_HEIGHT = 72;
+
+export const getSafeBottomOffset = (bottomInset: number) =>
+  Math.max(bottomInset + 7, 20);
 
 const ICONS: Record<string, string> = {
   Home: 'home',
@@ -12,8 +18,12 @@ const ICONS: Record<string, string> = {
   Profile: 'user',
 };
 
-const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
+const GlassTabBar = ({ state, navigation, insets }: BottomTabBarProps) => {
   const { theme, preset } = useAppTheme();
+  const { bottom: safeBottomInset } = useSafeAreaInsets();
+  const bottomOffset = getSafeBottomOffset(
+    Math.max(insets?.bottom ?? 0, safeBottomInset),
+  );
   const [layouts, setLayouts] = useState<Record<number, LayoutRectangle>>({});
   const translateX = useRef(new Animated.Value(0)).current;
 
@@ -33,7 +43,11 @@ const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
   const activeLayout = layouts[state.index];
 
   return (
-    <View className="absolute bottom-6 left-0 right-0 items-center" pointerEvents="box-none">
+    <View
+      className="absolute left-0 right-0 items-center"
+      style={{ bottom: bottomOffset }}
+      pointerEvents="box-none"
+    >
       <View className="flex-row rounded-[36px] overflow-hidden border border-glass-border p-2 gap-2.5">
         {Platform.OS === 'ios' ? (
           <BlurView

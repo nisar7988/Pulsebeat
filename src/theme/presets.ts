@@ -116,7 +116,12 @@ export interface ThemePresetDefinition {
 }
 
 function rgbToCss(rgb: string): string {
-  return `rgb(${rgb.replace(/\s+/g, ', ')})`;
+  const parts = rgb
+    .trim()
+    .split(/\s+/)
+    .map((n) => Math.max(0, Math.min(255, Number(n) || 0)));
+  if (parts.length !== 3) return '#C8F929';
+  return `#${parts.map((n) => n.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
 }
 
 function rgbToRgba(rgb: string, alpha: number): string {

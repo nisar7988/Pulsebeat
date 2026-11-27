@@ -12,6 +12,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useActiveTrack,
   useProgress,
@@ -30,9 +31,11 @@ import { RootStackParamList } from '../../navigation/types';
 import { useAppTheme } from '../../theme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 import { useOptimisticPlayback } from '../../hooks/useOptimisticPlayback';
+import { GLASS_TAB_BAR_HEIGHT, getSafeBottomOffset } from './GlassTabBar';
 
 export interface GlassMiniPlayerProps {
   fallbackSong?: Song;
+  hasTabBar?: boolean;
   bottomOffsetClass?: string;
 }
 
@@ -56,10 +59,19 @@ const MiniPlayerProgressBar: React.FC<{ isSwitchingTrack?: boolean }> = React.me
 
 export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   fallbackSong,
-  bottomOffsetClass = 'bottom-[92px]',
+  hasTabBar = true,
+  bottomOffsetClass,
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme, preset } = useAppTheme();
+  const { bottom: safeBottomInset } = useSafeAreaInsets();
+  const isCustomClass = Boolean(
+    bottomOffsetClass && bottomOffsetClass !== 'bottom-6',
+  );
+  const effectiveHasTabBar = hasTabBar && bottomOffsetClass !== 'bottom-6';
+  const bottomPosition =
+    getSafeBottomOffset(safeBottomInset) +
+    (effectiveHasTabBar ? GLASS_TAB_BAR_HEIGHT + 10 : 0);
 
   const activeTrack = useActiveTrack();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
@@ -145,7 +157,10 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   };
 
   return (
-    <View className={`absolute ${bottomOffsetClass} left-4 right-4 z-30 overflow-hidden rounded-2xl border border-glass-border`}>
+    <View
+      className={`absolute ${isCustomClass ? bottomOffsetClass : ''} left-4 right-4 z-30 overflow-hidden rounded-2xl border border-glass-border`}
+      style={isCustomClass ? undefined : { bottom: bottomPosition }}
+    >
       {/* Glass Frost Background */}
       {Platform.OS === 'ios' ? (
         <BlurView

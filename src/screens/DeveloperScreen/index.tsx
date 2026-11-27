@@ -31,6 +31,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import { useUserStore } from '../../store';
 import MUSIC_API from '../../config/api';
+import { version as packageVersion } from '../../../package.json';
 
 const NTFY_SHOUTOUT_URL = MUSIC_API.shoutout;
 const SHOUTOUT_STORAGE_KEY = 'pulsebeat-developer-shoutout-sent';
@@ -43,7 +44,7 @@ const DEVELOPER = {
   tagline: 'Audio Xperiences.',
   githubUrl: 'https://github.com/nisar7988',
   repoUrl: 'https://github.com/nisar7988/Pulsebeat',
-  appVersion: '0.0.1',
+  appVersion: packageVersion,
 };
 
 const HIGHLIGHTS = [
@@ -437,7 +438,7 @@ export default function DeveloperScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <GlassMiniPlayer bottomOffsetClass="bottom-6" />
+      <GlassMiniPlayer hasTabBar={false} />
     </View>
   );
 }

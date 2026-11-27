@@ -279,7 +279,7 @@ export default function ArtistsScreen() {
         )}
       </SafeAreaView>
 
-      <GlassMiniPlayer bottomOffsetClass="bottom-6" />
+      <GlassMiniPlayer hasTabBar={false} />
     </View>
   );
 }

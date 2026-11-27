@@ -1,5 +1,4 @@
 import { getColors } from 'react-native-image-colors';
-import { theme } from './index';
 
 export interface RawSongColors {
   primary: string;
@@ -22,10 +21,12 @@ export interface WidgetThemeColors {
   artBorder: string;
 }
 
+export const DEFAULT_PLAYER_BG = '#0A1208';
+
 export const DEFAULT_RAW_COLORS: RawSongColors = {
-  primary: theme.colors.primary.dark,
-  secondary: theme.colors.secondary.dark,
-  accent: theme.colors.accent.DEFAULT,
+  primary: '#94C312',
+  secondary: '#166534',
+  accent: '#C8F929',
 };
 
 export const DEFAULT_WIDGET_THEME: WidgetThemeColors = {
@@ -96,6 +97,10 @@ function getRelativeLuminance(hex: string): number {
   return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 }
 
+export function getContrastTextColor(hex: string): string {
+  return getRelativeLuminance(hex) > 0.42 ? '#0B1309' : '#FFFFFF';
+}
+
 function ensureVividAccent(hex: string): string {
   const normalized = normalizeHex(hex) ?? DEFAULT_RAW_COLORS.accent;
   const lum = getRelativeLuminance(normalized);
@@ -115,7 +120,7 @@ export async function extractRawSongColors(
   try {
     const result = await Promise.race([
       getColors(imageUrl, {
-        fallback: theme.colors.background.player,
+        fallback: DEFAULT_PLAYER_BG,
         cache: true,
         key: imageUrl,
       }),

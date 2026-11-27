@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { Song } from '../../types/song';
 import { useAppTheme } from '../../theme';
+import { hexToRgba } from '../../theme/songPalette';
 import { useDownloadStore } from '../../store/useDownloadStore';
 import {
   cancelDownload,
@@ -77,6 +78,14 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(({
       ? 'border border-accent/55 bg-accent/20'
       : 'border border-glass-border-light bg-glass-tint';
 
+  const customDownloadedStyle =
+    isDownloaded && accentColor
+      ? {
+          borderColor: hexToRgba(accentColor, 0.55),
+          backgroundColor: hexToRgba(accentColor, 0.2),
+        }
+      : undefined;
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -90,6 +99,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(({
           ? 'Remove downloaded song'
           : 'Download song'
       }
+      style={customDownloadedStyle}
       className={`${dims.box} rounded-full items-center justify-center ${containerStyle} ${className}`}
     >
       {isDownloading ? (
