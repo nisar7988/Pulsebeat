@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import { Song } from '../../../types/song';
 import { UserPlaylist } from '../../../store';
 
@@ -43,6 +43,7 @@ export default function PlaylistModal({
   onToggleLikeSong,
   onToggleDownloadSong,
 }: PlaylistModalProps) {
+  const { theme, themeVars } = useAppTheme();
   const [name, setName] = useState('');
 
   useEffect(() => {
@@ -65,8 +66,16 @@ export default function PlaylistModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
+      <View style={[styles.backdrop, themeVars]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.colors.background.card,
+              borderColor: theme.colors.glass.border,
+            },
+          ]}
+        >
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-lg font-extrabold text-white">
               {songToAdd ? 'Add to Playlist' : 'New Playlist'}
@@ -206,7 +215,7 @@ export default function PlaylistModal({
             placeholder="Late Night Vibes..."
             placeholderTextColor="rgba(255,255,255,0.35)"
             maxLength={36}
-            style={styles.input}
+            style={[styles.input, { borderColor: theme.colors.glass.border }]}
             onSubmitEditing={handleCreate}
           />
 

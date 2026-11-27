@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 
 export interface PlayerHeaderProps {
   title?: string;
@@ -16,6 +16,7 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({
   onLyricsPress,
   onQueuePress,
 }) => {
+  const { theme } = useAppTheme();
   return (
     <View className="absolute top-[55px] left-5 right-5 z-10 flex-row items-center justify-between">
       <TouchableOpacity

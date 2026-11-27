@@ -28,7 +28,7 @@ import { Song } from '../../types/song';
 import { useUserStore, useCurrentSongStore } from '../../store';
 import { navigateAndPlaySong } from '../../service/player';
 import { AppTabParamList, RootStackParamList } from '../../navigation/types';
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import {
   HomeHeader,
@@ -58,6 +58,7 @@ function dedupeSongs(list: Song[]): Song[] {
 
 export default function HomeScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
+  const { theme } = useAppTheme();
   const {
     selectedLanguages,
     selectedGenres,
@@ -577,6 +578,7 @@ export default function HomeScreen() {
       refreshing,
       renderArtistChip,
       renderHorizontalSong,
+      theme.colors.accent.DEFAULT,
       userGenres,
       userLanguages,
       usingCachedFeed,

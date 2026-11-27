@@ -20,7 +20,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { Song } from '../../types/song';
 import {
   getAlbumBySearch,
@@ -89,22 +89,26 @@ interface GlassCardProps {
 const GlassCard: React.FC<GlassCardProps> = ({
   children,
   className = '',
-  tintColor = theme.colors.glass.tint,
-}) => (
-  <View className={`overflow-hidden border border-glass-border ${className}`}>
-    {Platform.OS === 'ios' && (
-      <BlurView
-        style={StyleSheet.absoluteFill}
-        blurType="light"
-        blurAmount={22}
-        overlayColor="transparent"
-        reducedTransparencyFallbackColor={theme.colors.glass.fallbackSearch}
-      />
-    )}
-    <View className="absolute inset-0" style={{ backgroundColor: tintColor }} />
-    {children}
-  </View>
-);
+  tintColor,
+}) => {
+  const { theme } = useAppTheme();
+  const resolvedTint = tintColor ?? theme.colors.glass.tint;
+  return (
+    <View className={`overflow-hidden border border-glass-border ${className}`}>
+      {Platform.OS === 'ios' && (
+        <BlurView
+          style={StyleSheet.absoluteFill}
+          blurType="light"
+          blurAmount={22}
+          overlayColor="transparent"
+          reducedTransparencyFallbackColor={theme.colors.glass.fallbackSearch}
+        />
+      )}
+      <View className="absolute inset-0" style={{ backgroundColor: resolvedTint }} />
+      {children}
+    </View>
+  );
+};
 
 
 
@@ -112,6 +116,7 @@ const GlassCard: React.FC<GlassCardProps> = ({
 
 const SearchScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme } = useAppTheme();
   const { selectedLanguages } = useUserStore();
   const {
     recentSearches,

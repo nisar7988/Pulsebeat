@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { Song } from '../../types/song';
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { useDownloadStore } from '../../store/useDownloadStore';
 import {
   cancelDownload,
@@ -29,9 +29,11 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(({
   song,
   size = 'md',
   variant = 'glass',
-  accentColor = theme.colors.accent.DEFAULT,
+  accentColor,
   className = '',
 }) => {
+  const { theme } = useAppTheme();
+  const resolvedAccentColor = accentColor ?? theme.colors.accent.DEFAULT;
   const isDownloaded = useDownloadStore((state) =>
     Boolean(state.downloads[song.id]),
   );
@@ -91,12 +93,12 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(({
       className={`${dims.box} rounded-full items-center justify-center ${containerStyle} ${className}`}
     >
       {isDownloading ? (
-        <ActivityIndicator size="small" color={accentColor} />
+        <ActivityIndicator size="small" color={resolvedAccentColor} />
       ) : (
         <Feather
           name={isDownloaded ? 'check-circle' : 'download'}
           size={dims.icon}
-          color={isDownloaded ? accentColor : theme.colors.text.DEFAULT}
+          color={isDownloaded ? resolvedAccentColor : theme.colors.text.DEFAULT}
         />
       )}
     </TouchableOpacity>

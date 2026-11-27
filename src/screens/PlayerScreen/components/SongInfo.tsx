@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import { Song } from '../../../types/song';
 import DownloadButton from '../../../components/ui/DownloadButton';
 
@@ -22,6 +22,7 @@ export const SongInfo: React.FC<SongInfoProps> = ({
   bottomOffset = 340 + 18,
   onAddToPlaylist,
 }) => {
+  const { theme } = useAppTheme();
   return (
     <View
       className="absolute left-7 right-7 flex-row items-center justify-between gap-3"

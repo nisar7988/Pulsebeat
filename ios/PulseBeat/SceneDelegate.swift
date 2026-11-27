@@ -4,6 +4,7 @@ import ReactAppDependencyProvider
 import RNBootSplash
 import UIKit
 internal import Expo
+import react_native_stallion
 
 class SceneDelegate: ExpoReactNativeFactoryDelegate, UIWindowSceneDelegate {
   var window: UIWindow?
@@ -55,7 +56,7 @@ class SceneDelegate: ExpoReactNativeFactoryDelegate, UIWindowSceneDelegate {
     #if DEBUG
     RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
     #else
-    Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    StallionModule.getBundleURL()
     #endif
   }
 }

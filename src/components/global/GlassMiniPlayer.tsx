@@ -27,7 +27,7 @@ import {
   getSongTitle,
 } from '../../service/player';
 import { RootStackParamList } from '../../navigation/types';
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
 import { useOptimisticPlayback } from '../../hooks/useOptimisticPlayback';
 
@@ -59,6 +59,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   bottomOffsetClass = 'bottom-[92px]',
 }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme, preset } = useAppTheme();
 
   const activeTrack = useActiveTrack();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
@@ -156,7 +157,12 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
         />
       ) : (
         <View
-          style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(16, 28, 13, 0.92)' }]}
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: `rgba(${preset.rgb.bgSurface.replace(/\s+/g, ', ')}, 0.92)`,
+            },
+          ]}
         />
       )}
       <View className="absolute inset-0 bg-glass-tint" />

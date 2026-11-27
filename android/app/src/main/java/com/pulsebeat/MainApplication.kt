@@ -10,6 +10,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.pulsebeat.lockscreen.LockScreenPackage
+import com.stallion.Stallion
 
 class MainApplication : Application(), ReactApplication {
 
@@ -20,6 +21,8 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages.apply {
           add(LockScreenPackage())
         },
+      jsBundleFilePath =
+        if (BuildConfig.DEBUG) null else Stallion.getJSBundleFile(applicationContext),
     )
   }
 

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import BootSplash from 'react-native-bootsplash';
 import LinearGradient from 'react-native-linear-gradient';
-import { theme } from '../../theme';
+import { theme, useAppTheme } from '../../theme';
 
 type AnimatedBootSplashProps = {
   ready?: boolean;
@@ -21,6 +21,7 @@ export default function AnimatedBootSplash({
   ready = true,
   onAnimationEnd,
 }: AnimatedBootSplashProps) {
+  const { theme: activeTheme, preset } = useAppTheme();
   const containerOpacity = useRef(new Animated.Value(1)).current;
   const containerScale = useRef(new Animated.Value(1)).current;
   const logoScale = useRef(new Animated.Value(1)).current;
@@ -169,6 +170,7 @@ export default function AnimatedBootSplash({
         container.style,
         styles.container,
         {
+          backgroundColor: activeTheme.colors.background.DEFAULT,
           opacity: containerOpacity,
           transform: [{ scale: containerScale }],
         },
@@ -176,7 +178,7 @@ export default function AnimatedBootSplash({
     >
       <LinearGradient
         pointerEvents="none"
-        colors={['#0B1309', '#12220E', '#0B1309']}
+        colors={activeTheme.gradients.bootSplash}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -184,11 +186,19 @@ export default function AnimatedBootSplash({
 
       {/* Ambient glow & pulsing beat rings centered behind the BootSplash logo */}
       <View pointerEvents="none" style={styles.ringsAnchor}>
-        <View style={styles.ambientGlow} />
+        <View
+          style={[
+            styles.ambientGlow,
+            {
+              backgroundColor: `rgba(${preset.rgb.accent.replace(/\s+/g, ', ')}, 0.08)`,
+            },
+          ]}
+        />
         <Animated.View
           style={[
             styles.pulseRing,
             {
+              borderColor: `rgba(${preset.rgb.accent.replace(/\s+/g, ', ')}, 0.55)`,
               opacity: ring1Opacity,
               transform: [{ scale: ring1Scale }],
             },
@@ -198,6 +208,7 @@ export default function AnimatedBootSplash({
           style={[
             styles.pulseRingOuter,
             {
+              borderColor: `rgba(${preset.rgb.secondary.replace(/\s+/g, ', ')}, 0.45)`,
               opacity: ring2Opacity,
               transform: [{ scale: ring2Scale }],
             },
@@ -234,6 +245,7 @@ export default function AnimatedBootSplash({
               style={[
                 styles.equalizerBar,
                 {
+                  backgroundColor: activeTheme.colors.primary.DEFAULT,
                   height: bar.maxHeight,
                   transform: [{ scaleY: barScales[index] }],
                 },
@@ -244,7 +256,9 @@ export default function AnimatedBootSplash({
 
         <View style={styles.wordmarkRow}>
           <Text style={styles.wordmarkWhite}>Pulse</Text>
-          <Text style={styles.wordmarkLime}>Beat</Text>
+          <Text style={[styles.wordmarkLime, { color: activeTheme.colors.primary.DEFAULT }]}>
+            Beat
+          </Text>
         </View>
         <Text style={styles.tagline}>FEEL THE RHYTHM</Text>
       </Animated.View>

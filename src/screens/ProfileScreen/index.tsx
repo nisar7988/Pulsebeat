@@ -15,8 +15,15 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import TrackPlayer, { RepeatMode } from 'react-native-track-player';
+import {
+  ACTIVE_RELEASE_HASH,
+  restart as restartStallion,
+  sync as syncStallion,
+  useStallionModal,
+  useStallionUpdate,
+} from 'react-native-stallion';
 
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import {
   useUserStore,
   useListeningStore,
@@ -85,6 +92,7 @@ function formatListeningDuration(totalSeconds: number): string {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme, themeId, presets, setThemeId } = useAppTheme();
   const {
     selectedLanguages,
     selectedGenres,
@@ -132,6 +140,9 @@ export default function ProfileScreen() {
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editArtistsModalVisible, setEditArtistsModalVisible] = useState(false);
+  const [checkingOta, setCheckingOta] = useState(false);
+  const { isRestartRequired, newReleaseBundle } = useStallionUpdate();
+  const { showModal: showStallionModal } = useStallionModal();
 
   const avatarPreset = useMemo(
     () => AVATAR_PRESETS.find((p) => p.id === avatarId) ?? AVATAR_PRESETS[0],
@@ -230,6 +241,24 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleCheckOtaUpdates = () => {
+    if (checkingOta) return;
+    if (typeof syncStallion !== 'function') {
+      Alert.alert(
+        'OTA Unavailable',
+        'Stallion OTA sync requires a native build with Stallion credentials configured.',
+      );
+      return;
+    }
+    setCheckingOta(true);
+    try {
+      syncStallion();
+      setTimeout(() => setCheckingOta(false), 1200);
+    } catch {
+      setCheckingOta(false);
+    }
+  };
+
   const stats = [
     { label: 'Listening', value: formatListeningDuration(totalListeningSeconds) },
     { label: 'Plays', value: String(totalPlays) },
@@ -282,7 +311,7 @@ export default function ProfileScreen() {
           {/* Hero Profile Banner */}
           <View className="mx-5 mb-5 overflow-hidden rounded-3xl border border-glass-border p-5 bg-glass-tint relative">
             <LinearGradient
-              colors={['rgba(200, 249, 41, 0.16)', 'rgba(16, 28, 13, 0.78)']}
+              colors={theme.gradients.cardHighlight}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -510,6 +539,86 @@ export default function ProfileScreen() {
             )}
           </View>
 
+          {/* App Theme Presets */}
+          <View className="mx-5 mb-5 rounded-3xl border border-glass-border p-4 bg-glass-tint">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-sm font-bold text-white">App Theme</Text>
+              <Text className="text-xs font-semibold text-accent">
+                {presets.find((p) => p.id === themeId)?.name}
+              </Text>
+            </View>
+            <Text className="text-xs text-text-muted mb-3">
+              Personalize the mood and accent palette across the entire app
+            </Text>
+
+            <View className="flex-row flex-wrap justify-between gap-y-2.5">
+              {presets.map((item) => {
+                const active = item.id === themeId;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    activeOpacity={0.85}
+                    onPress={() => setThemeId(item.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    className={`w-[48.5%] rounded-2xl border p-3 ${
+                      active
+                        ? 'border-accent bg-accent/15'
+                        : 'border-glass-border bg-white/5'
+                    }`}
+                  >
+                    <View className="flex-row items-center justify-between mb-2">
+                      <View
+                        className="h-7 w-7 rounded-full items-center justify-center"
+                        style={{ backgroundColor: item.previewColors[2] }}
+                      >
+                        <Feather
+                          name={item.icon}
+                          size={14}
+                          color={item.colors.text.dark}
+                        />
+                      </View>
+                      <View className="flex-row items-center gap-1">
+                        {item.previewColors.map((swatch, idx) => (
+                          <View
+                            key={`${item.id}-${idx}`}
+                            className="h-3 w-3 rounded-full border border-white/25"
+                            style={{ backgroundColor: swatch }}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-1 pr-1">
+                        <Text
+                          className={`text-xs font-bold ${
+                            active ? 'text-accent' : 'text-white'
+                          }`}
+                          numberOfLines={1}
+                        >
+                          {item.name}
+                        </Text>
+                        <Text
+                          className="text-[10px] text-text-muted mt-0.5"
+                          numberOfLines={1}
+                        >
+                          {item.tagline}
+                        </Text>
+                      </View>
+                      {active && (
+                        <Feather
+                          name="check-circle"
+                          size={14}
+                          color={theme.colors.accent.DEFAULT}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           {/* Audio & Playback Engine (Persisted & Wired) */}
           <View className="mx-5 mb-5 rounded-3xl border border-glass-border p-4 bg-glass-tint">
             <Text className="text-sm font-bold text-white mb-3">
@@ -706,6 +815,64 @@ export default function ProfileScreen() {
             )}
           </View>
 
+          {/* Over-the-Air Updates (Stallion) */}
+          <View className="mx-5 mb-5 rounded-3xl border border-glass-border p-4 bg-glass-tint">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-sm font-bold text-white">App Updates (OTA)</Text>
+              <Text className="text-xs font-semibold text-accent">
+                {isRestartRequired ? 'Update Ready' : 'Stallion'}
+              </Text>
+            </View>
+            <Text className="text-xs text-text-muted mb-3">
+              {isRestartRequired
+                ? newReleaseBundle?.releaseNote ||
+                  'A new bundle is downloaded and ready to apply.'
+                : ACTIVE_RELEASE_HASH
+                ? `Active bundle: ${ACTIVE_RELEASE_HASH.slice(0, 12)}`
+                : 'Running embedded native bundle'}
+            </Text>
+
+            <View className="flex-row items-center justify-between gap-2.5">
+              {isRestartRequired ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => restartStallion()}
+                  className="flex-1 py-2.5 rounded-xl bg-accent flex-row items-center justify-center gap-1.5"
+                >
+                  <Feather
+                    name="refresh-cw"
+                    size={13}
+                    color={theme.colors.text.dark}
+                  />
+                  <Text className="text-xs font-extrabold text-text-dark">
+                    Restart & Apply
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={checkingOta}
+                  onPress={handleCheckOtaUpdates}
+                  className="flex-1 py-2.5 rounded-xl border border-accent/50 bg-accent/15 items-center justify-center"
+                >
+                  <Text className="text-xs font-bold text-accent">
+                    {checkingOta ? 'Checking...' : 'Check for Updates'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={showStallionModal}
+                className="flex-1 py-2.5 rounded-xl border border-glass-border bg-white/10 items-center justify-center"
+              >
+                <Text className="text-xs font-semibold text-white">
+                  Stallion Console
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Developer Shoutout Entry Card */}
           <TouchableOpacity
             activeOpacity={0.85}
@@ -713,7 +880,7 @@ export default function ProfileScreen() {
             className="mx-5 mb-6 overflow-hidden rounded-3xl border border-accent/35 p-4 bg-glass-tint flex-row items-center justify-between"
           >
             <LinearGradient
-              colors={['rgba(200, 249, 41, 0.14)', 'rgba(16, 28, 13, 0.72)']}
+              colors={theme.gradients.cardHighlight}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}

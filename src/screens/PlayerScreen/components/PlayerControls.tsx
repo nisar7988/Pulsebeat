@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 
 export interface PlayerControlsProps {
   isPlaying: boolean;
@@ -29,11 +29,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
   liked = false,
   isShuffle = false,
   isRepeat = false,
-  accentColor = theme.colors.accent.DEFAULT,
-  orbGradient = [...theme.gradients.orb],
-  glowColor = theme.colors.accent.glow,
-  fanColor: _fanColor = theme.colors.playerUi.fan,
-  ringColor = theme.colors.playerUi.ring,
+  accentColor,
+  orbGradient,
+  glowColor,
+  fanColor: _fanColor,
+  ringColor,
   onTogglePlayback,
   onPrevious,
   onNext,
@@ -41,6 +41,11 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
   onToggleShuffle,
   onToggleRepeat,
 }) => {
+  const { theme } = useAppTheme();
+  const resolvedAccent = accentColor ?? theme.colors.accent.DEFAULT;
+  const resolvedOrbGradient = orbGradient ?? [...theme.gradients.orb];
+  const resolvedGlow = glowColor ?? theme.colors.accent.glow;
+  const resolvedRing = ringColor ?? theme.colors.playerUi.ring;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Heart button */}
@@ -52,7 +57,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
         <Feather
           name="heart"
           size={18}
-          color={liked ? accentColor : theme.colors.text.DEFAULT}
+          color={liked ? resolvedAccent : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
 
@@ -69,7 +74,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
         <Feather
           name="shuffle"
           size={17}
-          color={isShuffle ? accentColor : theme.colors.text.DEFAULT}
+          color={isShuffle ? resolvedAccent : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
 
@@ -86,7 +91,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
         <Feather
           name="repeat"
           size={17}
-          color={isRepeat ? accentColor : theme.colors.text.DEFAULT}
+          color={isRepeat ? resolvedAccent : theme.colors.text.DEFAULT}
         />
       </TouchableOpacity>
 
@@ -121,12 +126,12 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
         {/* Dark ring + artwork orb */}
         <View
           className="w-[124px] h-[124px] rounded-full items-center justify-center"
-          style={{ backgroundColor: ringColor }}
+          style={{ backgroundColor: resolvedRing }}
         >
           <View
             className="w-[100px] h-[100px] rounded-full overflow-hidden items-center justify-center"
             style={{
-              shadowColor: glowColor,
+              shadowColor: resolvedGlow,
               shadowOpacity: 0.8,
               shadowRadius: 20,
               elevation: 12,
@@ -134,7 +139,7 @@ export const PlayerControls: React.FC<PlayerControlsProps> = ({
           >
             <Image source={{ uri: artwork }} className="absolute inset-0 h-full w-full" />
             <LinearGradient
-              colors={orbGradient}
+              colors={resolvedOrbGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}

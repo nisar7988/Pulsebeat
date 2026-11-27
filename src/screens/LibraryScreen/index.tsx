@@ -16,7 +16,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { Song } from '../../types/song';
 import {
   getSongArtistName,
@@ -58,6 +58,7 @@ const DOWNLOADED_PLAYLIST_ID = 'downloaded-songs';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
+  const { theme } = useAppTheme();
   const { selectedGenres } = useUserStore();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
 
@@ -434,7 +435,7 @@ export default function LibraryScreen() {
                 className="overflow-hidden rounded-3xl border border-glass-border p-4 bg-glass-tint relative"
               >
                 <LinearGradient
-                  colors={['rgba(52, 211, 153, 0.20)', 'rgba(22, 38, 17, 0.45)']}
+                  colors={theme.gradients.cardSecondaryHighlight}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
@@ -540,7 +541,7 @@ export default function LibraryScreen() {
                 className="overflow-hidden rounded-3xl border border-glass-border p-4 bg-glass-tint relative"
               >
                 <LinearGradient
-                  colors={['rgba(200, 249, 41, 0.22)', 'rgba(22, 38, 17, 0.45)']}
+                  colors={theme.gradients.cardHighlight}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}

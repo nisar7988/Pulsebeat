@@ -13,7 +13,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import {
   ApiArtist,
   getPopularArtists,
@@ -30,6 +30,7 @@ export default function EditArtistsModal({
   visible,
   onClose,
 }: EditArtistsModalProps) {
+  const { theme, themeVars } = useAppTheme();
   const {
     selectedLanguages,
     selectedArtists,
@@ -92,7 +93,7 @@ export default function EditArtistsModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-background">
+      <View className="flex-1 bg-background" style={themeVars}>
         <LinearGradient
           colors={theme.gradients.app}
           start={{ x: 0, y: 0 }}

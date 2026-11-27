@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import { Song } from '../../../types/song';
 import {
   getSongArtistName,
@@ -60,6 +60,7 @@ export default function PlaylistDetailModal({
   const [draftTitle, setDraftTitle] = useState('');
   const [batchDownloading, setBatchDownloading] = useState(false);
   const downloads = useDownloadStore((state) => state.downloads);
+  const { theme, themeVars } = useAppTheme();
 
   useEffect(() => {
     setEditingTitle(false);
@@ -124,7 +125,7 @@ export default function PlaylistDetailModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-background">
+      <View className="flex-1 bg-background" style={themeVars}>
         <LinearGradient
           colors={theme.gradients.app}
           start={{ x: 0, y: 0 }}

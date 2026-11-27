@@ -12,7 +12,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import { Song } from '../../../types/song';
 import {
   getQueueSongs,
@@ -32,9 +32,11 @@ interface QueueModalProps {
 
 export default function QueueModal({
   visible,
-  accentColor = theme.colors.accent.DEFAULT,
+  accentColor,
   onClose,
 }: QueueModalProps) {
+  const { theme, themeVars } = useAppTheme();
+  const resolvedAccent = accentColor ?? theme.colors.accent.DEFAULT;
   const autoPlay = useUserStore((state) => state.autoPlay);
   const [songs, setSongs] = useState<Song[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -71,7 +73,7 @@ export default function QueueModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-background">
+      <View className="flex-1 bg-background" style={themeVars}>
         <LinearGradient
           colors={theme.gradients.app}
           start={{ x: 0, y: 0 }}
@@ -100,7 +102,7 @@ export default function QueueModal({
 
           {loading ? (
             <View className="flex-1 items-center justify-center">
-              <ActivityIndicator size="large" color={accentColor} />
+              <ActivityIndicator size="large" color={resolvedAccent} />
             </View>
           ) : songs.length === 0 ? (
             <View className="flex-1 items-center justify-center px-8">

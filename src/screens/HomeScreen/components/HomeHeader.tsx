@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import { useUserStore } from '../../../store';
 
 const QUALITY_BADGE: Record<'high' | 'medium' | 'low', string> = {
@@ -30,6 +30,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   onSelectLanguage,
   onOpenSearch,
 }) => {
+  const { theme } = useAppTheme();
   const audioQuality = useUserStore((state) => state.audioQuality);
   const qualityLabel = QUALITY_BADGE[audioQuality] || '320K';
 
@@ -46,11 +47,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
       <View className="overflow-hidden rounded-[28px] border border-white/20 p-4 relative shadow-2xl shadow-black/60 bg-glass-tint">
         {/* Specular Liquid Gradient Sheen */}
         <LinearGradient
-          colors={[
-            'rgba(255, 255, 255, 0.22)',
-            'rgba(200, 249, 41, 0.08)',
-            'rgba(16, 28, 13, 0.70)',
-          ]}
+          colors={theme.gradients.headerSheen}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.9, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -131,7 +128,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
                     <Text
                       className={`text-xs capitalize ${
                         isActive
-                          ? 'font-extrabold text-black'
+                          ? 'font-extrabold text-text-dark'
                           : 'font-semibold text-white/80'
                       }`}
                     >

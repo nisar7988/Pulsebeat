@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-bg: 11 19 9;
+  --color-bg-surface: 16 28 13;
+  --color-bg-card: 21 36 17;
+  --color-bg-elevated: 28 48 23;
+  --color-bg-player: 10 18 8;
+  --color-primary: 200 249 41;
+  --color-primary-dark: 148 195 18;
+  --color-primary-light: 214 255 80;
+  --color-primary-neon: 206 251 2;
+  --color-secondary: 34 197 94;
+  --color-secondary-dark: 22 101 52;
+  --color-secondary-light: 74 222 128;
+  --color-accent: 200 249 41;
+  --color-accent-cyan: 52 211 153;
+  --color-text-dark: 11 19 9;
+  --color-glass-tint: 22 38 17;
+}

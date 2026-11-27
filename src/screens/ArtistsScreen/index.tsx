@@ -17,7 +17,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import {
   ApiArtist,
@@ -50,6 +50,7 @@ function mapApiArtists(rawList: any[]): ApiArtist[] {
 
 export default function ArtistsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme } = useAppTheme();
   const selectedLanguages = useUserStore((state) => state.selectedLanguages);
 
   const [query, setQuery] = useState('');

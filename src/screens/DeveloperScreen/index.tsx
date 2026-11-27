@@ -26,7 +26,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import { useUserStore } from '../../store';
@@ -67,6 +67,7 @@ const HIGHLIGHTS = [
 
 export default function DeveloperScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme } = useAppTheme();
   const profileName = useUserStore((state) => state.profileName);
   const profileHandle = useUserStore((state) => state.profileHandle);
 
@@ -234,7 +235,7 @@ export default function DeveloperScreen() {
           {/* Developer Hero Card */}
           <View className="mx-5 mb-5 overflow-hidden rounded-3xl border border-glass-border p-5 bg-glass-tint relative">
             <LinearGradient
-              colors={['rgba(200, 249, 41, 0.18)', 'rgba(16, 28, 13, 0.85)']}
+              colors={theme.gradients.cardHighlight}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}

@@ -7,7 +7,7 @@ import {
   PanResponder,
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -71,16 +71,20 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   width = SCREEN_WIDTH,
   margin = Math.round(width * 0.062), // ~24px on 390w
   sweepAngleDeg = 57,
-  trackColor = theme.colors.playerUi.trackBg,
-  progressColor = theme.colors.accent.DEFAULT,
+  trackColor,
+  progressColor,
   strokeWidth = 2.5,
-  dotColor = theme.colors.accent.DEFAULT,
+  dotColor,
   dotRadius = 6,
   showDot = true,
   onSeek,
   onScrub,
   style,
 }) => {
+  const { theme } = useAppTheme();
+  const resolvedTrackColor = trackColor ?? theme.colors.playerUi.trackBg;
+  const resolvedProgressColor = progressColor ?? theme.colors.accent.DEFAULT;
+  const resolvedDotColor = dotColor ?? theme.colors.accent.DEFAULT;
   // Concentric arc geometry:
   // The dome panel has radius R_DOME = width / 2 centered at (width / 2, width / 2).
   // An arc with R = R_DOME - margin is strictly concentric with the dome at EVERY point.
@@ -173,7 +177,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         {/* Background track arc with rounded pill ends */}
         <Path
           d={ARC_PATH}
-          stroke={trackColor}
+          stroke={resolvedTrackColor}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           fill="none"
@@ -182,7 +186,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         {/* Active progress arc with rounded pill ends */}
         <Path
           d={ARC_PATH}
-          stroke={progressColor}
+          stroke={resolvedProgressColor}
           strokeWidth={strokeWidth + 0.5}
           strokeLinecap="round"
           fill="none"
@@ -202,7 +206,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
               cx={dot.x}
               cy={dot.y}
               r={dotRadius}
-              fill={dotColor}
+              fill={resolvedDotColor}
             />
           </>
         )}

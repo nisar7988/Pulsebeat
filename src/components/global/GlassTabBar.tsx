@@ -3,7 +3,7 @@ import { Animated, LayoutRectangle, Platform, StyleSheet, TouchableOpacity, View
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from '@react-native-community/blur';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 
 const ICONS: Record<string, string> = {
   Home: 'home',
@@ -13,6 +13,7 @@ const ICONS: Record<string, string> = {
 };
 
 const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
+  const { theme, preset } = useAppTheme();
   const [layouts, setLayouts] = useState<Record<number, LayoutRectangle>>({});
   const translateX = useRef(new Animated.Value(0)).current;
 
@@ -44,7 +45,12 @@ const GlassTabBar = ({ state, navigation }: BottomTabBarProps) => {
           />
         ) : (
           <View
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(16, 28, 13, 0.92)' }]}
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: `rgba(${preset.rgb.bgSurface.replace(/\s+/g, ', ')}, 0.92)`,
+              },
+            ]}
           />
         )}
         <View className="absolute inset-0 bg-glass-tint" />

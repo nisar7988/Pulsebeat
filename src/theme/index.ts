@@ -17,3 +17,5 @@ export * from './colors';
 export * from './spacing';
 export * from './typography';
 export * from './borderRadius';
+export * from './presets';
+export * from './ThemeProvider';

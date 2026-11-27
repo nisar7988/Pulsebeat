@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 
 export const AVATAR_PRESETS = [
   { id: 'neon-disc', icon: 'disc', label: 'Vinyl' },
@@ -39,6 +39,7 @@ export default function EditProfileModal({
   onClose,
   onSave,
 }: EditProfileModalProps) {
+  const { theme, themeVars } = useAppTheme();
   const [name, setName] = useState(initialName);
   const [handle, setHandle] = useState(initialHandle);
   const [avatarId, setAvatarId] = useState(initialAvatarId);
@@ -69,8 +70,16 @@ export default function EditProfileModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
+      <View style={[styles.backdrop, themeVars]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.colors.background.card,
+              borderColor: theme.colors.glass.border,
+            },
+          ]}
+        >
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-lg font-extrabold text-white">Edit Local Profile</Text>
             <TouchableOpacity
@@ -125,7 +134,7 @@ export default function EditProfileModal({
             placeholder="PulseBeat Listener"
             placeholderTextColor="rgba(255,255,255,0.35)"
             maxLength={28}
-            style={styles.input}
+            style={[styles.input, { borderColor: theme.colors.glass.border }]}
           />
 
           <Text className="text-xs font-semibold text-text-muted mb-1.5 mt-3">
@@ -138,7 +147,7 @@ export default function EditProfileModal({
             placeholderTextColor="rgba(255,255,255,0.35)"
             autoCapitalize="none"
             maxLength={24}
-            style={styles.input}
+            style={[styles.input, { borderColor: theme.colors.glass.border }]}
           />
 
           <View className="flex-row gap-3 mt-5">

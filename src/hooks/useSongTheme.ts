@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
-import { theme } from '../theme';
+import { useEffect, useMemo, useState } from 'react';
+import { useAppTheme } from '../theme';
 import {
   adjustColor,
-  DEFAULT_RAW_COLORS,
   extractRawSongColors,
   hexToRgba,
 } from '../theme/songPalette';
@@ -24,25 +23,31 @@ export interface PlayerTheme {
   ringColor: string;
 }
 
-const DEFAULT_THEME: PlayerTheme = {
-  primary: DEFAULT_RAW_COLORS.primary,
-  secondary: DEFAULT_RAW_COLORS.secondary,
-  accent: DEFAULT_RAW_COLORS.accent,
-  accentColor: DEFAULT_RAW_COLORS.accent,
-  background: theme.colors.background.player,
-  backgroundOverlay: [...theme.gradients.playerOverlay],
-  panelGradient: [...theme.gradients.panel],
-  orbGradient: [...theme.gradients.orb],
-  progressColor: theme.colors.accent.DEFAULT,
-  trackColor: theme.colors.playerUi.trackBg,
-  dotColor: theme.colors.accent.DEFAULT,
-  glowColor: theme.colors.accent.glow,
-  fanColor: theme.colors.playerUi.fan,
-  ringColor: theme.colors.playerUi.ring,
-};
-
 export function useSongTheme(imageUrl: string | undefined): PlayerTheme {
-  const [themeState, setThemeState] = useState<PlayerTheme>(DEFAULT_THEME);
+  const { theme } = useAppTheme();
+  const baseTheme = useMemo<PlayerTheme>(
+    () => ({
+      primary: theme.colors.primary.dark,
+      secondary: theme.colors.secondary.dark,
+      accent: theme.colors.accent.DEFAULT,
+      accentColor: theme.colors.accent.DEFAULT,
+      background: theme.colors.background.player,
+      backgroundOverlay: [...theme.gradients.playerOverlay],
+      panelGradient: [...theme.gradients.panel],
+      orbGradient: [...theme.gradients.orb],
+      progressColor: theme.colors.accent.DEFAULT,
+      trackColor: theme.colors.playerUi.trackBg,
+      dotColor: theme.colors.accent.DEFAULT,
+      glowColor: theme.colors.accent.glow,
+      fanColor: theme.colors.playerUi.fan,
+      ringColor: theme.colors.playerUi.ring,
+    }),
+    [theme],
+  );
+  const [extractedTheme, setExtractedTheme] = useState<{
+    imageUrl: string;
+    theme: PlayerTheme;
+  } | null>(null);
 
   useEffect(() => {
     if (!imageUrl) return;
@@ -69,25 +74,28 @@ export function useSongTheme(imageUrl: string | undefined): PlayerTheme {
       const fan = hexToRgba(primaryHex, 0.28);
       const ring = hexToRgba(primaryHex, 0.45);
 
-      setThemeState({
-        primary: primaryHex,
-        secondary: secondaryHex,
-        accent: accentHex,
-        accentColor: accentHex,
-        background: bgDark,
-        backgroundOverlay: [
-          hexToRgba(bgMid, 0.55),
-          hexToRgba(bgDark, 0.45),
-          hexToRgba(bgDeep, 0.9),
-        ],
-        panelGradient: [panel1, panel2, panel3],
-        orbGradient: [orb1, orb2],
-        progressColor: accentHex,
-        trackColor: hexToRgba(bgDeep, 0.75),
-        dotColor: accentHex,
-        glowColor: accentHex,
-        fanColor: fan,
-        ringColor: ring,
+      setExtractedTheme({
+        imageUrl,
+        theme: {
+          primary: primaryHex,
+          secondary: secondaryHex,
+          accent: accentHex,
+          accentColor: accentHex,
+          background: bgDark,
+          backgroundOverlay: [
+            hexToRgba(bgMid, 0.55),
+            hexToRgba(bgDark, 0.45),
+            hexToRgba(bgDeep, 0.9),
+          ],
+          panelGradient: [panel1, panel2, panel3],
+          orbGradient: [orb1, orb2],
+          progressColor: accentHex,
+          trackColor: hexToRgba(bgDeep, 0.75),
+          dotColor: accentHex,
+          glowColor: accentHex,
+          fanColor: fan,
+          ringColor: ring,
+        },
       });
     }, 150);
 
@@ -97,5 +105,8 @@ export function useSongTheme(imageUrl: string | undefined): PlayerTheme {
     };
   }, [imageUrl]);
 
-  return themeState;
+  if (extractedTheme && extractedTheme.imageUrl === imageUrl) {
+    return extractedTheme.theme;
+  }
+  return baseTheme;
 }

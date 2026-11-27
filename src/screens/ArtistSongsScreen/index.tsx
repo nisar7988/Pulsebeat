@@ -16,7 +16,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { Song } from '../../types/song';
 import { RootStackParamList } from '../../navigation/types';
 import {
@@ -36,6 +36,7 @@ const DEFAULT_AVATAR = 'https://c.saavncdn.com/artists/default_150x150.jpg';
 
 export default function ArtistSongsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme } = useAppTheme();
   const route = useRoute<RouteProp<RootStackParamList, 'ArtistSongs'>>();
   const { artistId: paramArtistId, artistName, avatar: paramAvatar } = route.params;
 

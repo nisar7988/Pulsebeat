@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ThemePresetId } from '../theme/presets';
 
 // In-memory fallback if the native module hasn't been recompiled into the binary yet
 const memoryStore = new Map<string, string>();
@@ -127,6 +128,7 @@ export interface UserPreferencesState {
   audioQuality: AudioQuality;
   autoPlay: boolean;
   repeatByDefault: boolean;
+  themeId: ThemePresetId;
   _hasHydrated: boolean;
 
   toggleLanguage: (language: string) => void;
@@ -146,6 +148,7 @@ export interface UserPreferencesState {
   setAudioQuality: (quality: AudioQuality) => void;
   setAutoPlay: (autoPlay: boolean) => void;
   setRepeatByDefault: (repeat: boolean) => void;
+  setThemeId: (themeId: ThemePresetId) => void;
   completeOnboarding: () => void;
   resetPreferences: () => void;
   setHasHydrated: (state: boolean) => void;
@@ -167,6 +170,7 @@ export const useUserStore = create<UserPreferencesState>()(
       audioQuality: 'high',
       autoPlay: true,
       repeatByDefault: false,
+      themeId: 'pulse',
       _hasHydrated: false,
 
       toggleLanguage: (language: string) => {
@@ -262,6 +266,8 @@ export const useUserStore = create<UserPreferencesState>()(
       setAutoPlay: (autoPlay: boolean) => set({ autoPlay }),
 
       setRepeatByDefault: (repeatByDefault: boolean) => set({ repeatByDefault }),
+
+      setThemeId: (themeId: ThemePresetId) => set({ themeId }),
 
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
 import { useDownloadStore } from '../../../store/useDownloadStore';
 
@@ -11,6 +11,7 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(
   song,
   onPlay,
 }) => {
+  const { theme } = useAppTheme();
   const {
     isCurrentSong,
     isPlayingCurrent,

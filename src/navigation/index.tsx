@@ -8,7 +8,7 @@ import ArtistsScreen from '../screens/ArtistsScreen';
 import ArtistSongsScreen from '../screens/ArtistSongsScreen';
 import DeveloperScreen from '../screens/DeveloperScreen';
 import { useUserStore } from '../store';
-import { theme } from '../theme';
+import { useAppTheme } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -17,6 +17,7 @@ export default function RootNavigator() {
     (state) => state.hasCompletedOnboarding,
   );
   const hasHydrated = useUserStore((state) => state._hasHydrated);
+  const { theme } = useAppTheme();
 
   if (!hasHydrated) {
     return null;

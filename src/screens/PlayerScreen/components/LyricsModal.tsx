@@ -12,7 +12,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useProgress } from 'react-native-track-player';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 import { getSongLyrics } from '../../../service/music';
 import { decodeHtmlEntities, seekTo } from '../../../service/player';
 
@@ -64,9 +64,11 @@ export default function LyricsModal({
   title,
   artist,
   duration,
-  accentColor = theme.colors.accent.DEFAULT,
+  accentColor,
   onClose,
 }: LyricsModalProps) {
+  const { theme, themeVars } = useAppTheme();
+  const resolvedAccent = accentColor ?? theme.colors.accent.DEFAULT;
   const { position } = useProgress(250);
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const lineOffsetsRef = useRef<Record<number, number>>({});
@@ -135,7 +137,7 @@ export default function LyricsModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-background">
+      <View className="flex-1 bg-background" style={themeVars}>
         <LinearGradient
           colors={theme.gradients.player}
           start={{ x: 0, y: 0 }}
@@ -155,7 +157,7 @@ export default function LyricsModal({
             <View className="flex-1 mx-3 items-center">
               <Text
                 className="text-xs font-bold uppercase tracking-widest"
-                style={{ color: accentColor }}
+                style={{ color: resolvedAccent }}
               >
                 {syncedLines.length > 0 ? 'Synced Lyrics' : 'Lyrics'}
               </Text>
@@ -171,7 +173,7 @@ export default function LyricsModal({
 
           {loading ? (
             <View className="flex-1 items-center justify-center">
-              <ActivityIndicator size="large" color={accentColor} />
+              <ActivityIndicator size="large" color={resolvedAccent} />
               <Text className="text-xs text-text-muted mt-3">
                 Loading lyrics...
               </Text>
@@ -189,7 +191,7 @@ export default function LyricsModal({
                 onPress={loadLyrics}
                 activeOpacity={0.85}
                 className="px-5 py-2.5 rounded-full"
-                style={{ backgroundColor: accentColor }}
+                style={{ backgroundColor: resolvedAccent }}
               >
                 <Text className="text-xs font-extrabold text-text-dark">Retry</Text>
               </TouchableOpacity>
@@ -228,7 +230,7 @@ export default function LyricsModal({
                       className={`text-xl leading-8 ${
                         isActive ? 'font-extrabold' : 'font-semibold text-white/45'
                       }`}
-                      style={isActive ? { color: accentColor } : undefined}
+                      style={isActive ? { color: resolvedAccent } : undefined}
                     >
                       {line.text}
                     </Text>

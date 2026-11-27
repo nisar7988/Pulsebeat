@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import { theme } from '../../../theme';
+import { useAppTheme } from '../../../theme';
 
 export interface SectionHeaderProps {
   title: string;
@@ -18,6 +18,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   actionLabel,
   onActionPress,
 }) => {
+  const { theme } = useAppTheme();
   return (
     <View className="px-5 pt-5 pb-2 flex-row items-end justify-between gap-3">
       <View className="flex-1">

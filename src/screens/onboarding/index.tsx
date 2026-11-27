@@ -16,7 +16,7 @@ import Feather from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/types';
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 import { useUserStore } from '../../store';
 import {
   LANGUAGES,
@@ -33,6 +33,7 @@ import {
 
 export const OnboardingScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { theme } = useAppTheme();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   // Live artist data & search states

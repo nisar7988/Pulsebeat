@@ -1,9 +1,10 @@
 import React, { type PropsWithChildren } from 'react';
 import { View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { theme } from '../../theme';
+import { useAppTheme } from '../../theme';
 
 export default function GradientBackground({ children }: PropsWithChildren) {
+  const { theme } = useAppTheme();
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background.DEFAULT }}>
       <LinearGradient
