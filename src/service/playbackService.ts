@@ -29,6 +29,18 @@ export const playbackService = async () => {
     await TrackPlayer.seekTo(event.position);
     syncPlaybackWidget();
   });
+  TrackPlayer.addEventListener(Event.RemoteDuck, async (event) => {
+    if (event.permanent) {
+      useCurrentSongStore.getState().setIsPlaying(false);
+      await TrackPlayer.pause();
+      syncPlaybackWidget();
+    } else if (event.paused) {
+      useCurrentSongStore.getState().setIsPlaying(false);
+      syncPlaybackWidget();
+    } else {
+      syncPlaybackWidget();
+    }
+  });
   TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, (event) => {
     syncWidgetProgress(event.position, event.duration);
   });

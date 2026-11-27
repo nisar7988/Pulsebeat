@@ -111,7 +111,9 @@ export const initializePlayer = async () => {
 
   isInitializing = true;
   try {
-    await TrackPlayer.setupPlayer();
+    await TrackPlayer.setupPlayer({
+      autoHandleInterruptions: true,
+    });
     await TrackPlayer.updateOptions({
       capabilities: [
         Capability.Play,
