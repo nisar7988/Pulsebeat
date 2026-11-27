@@ -20,8 +20,10 @@ import { theme } from '../../theme';
 import {
   useUserStore,
   useListeningStore,
+  useDownloadStore,
   AudioQuality,
 } from '../../store';
+import { clearAllDownloads, formatBytes } from '../../service/download';
 import { RootStackParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
 import {
@@ -114,6 +116,20 @@ export default function ProfileScreen() {
     clearHistory,
   } = useListeningStore();
 
+  const downloads = useDownloadStore((state) => state.downloads);
+  const downloadedCount = useMemo(
+    () => Object.keys(downloads).length,
+    [downloads],
+  );
+  const totalDownloadBytes = useMemo(
+    () =>
+      Object.values(downloads).reduce(
+        (sum, entry) => sum + (entry.fileSize || 0),
+        0,
+      ),
+    [downloads],
+  );
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editArtistsModalVisible, setEditArtistsModalVisible] = useState(false);
 
@@ -193,6 +209,22 @@ export default function ProfileScreen() {
           text: 'Clear History',
           style: 'destructive',
           onPress: () => clearHistory(),
+        },
+      ],
+    );
+  };
+
+  const handleClearDownloads = () => {
+    if (downloadedCount === 0) return;
+    Alert.alert(
+      'Clear Offline Downloads',
+      `Delete all ${downloadedCount} downloaded songs (${formatBytes(totalDownloadBytes)}) from your device?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: () => clearAllDownloads(),
         },
       ],
     );
@@ -636,11 +668,11 @@ export default function ProfileScreen() {
             <View className="flex-row items-center justify-between mb-2">
               <Text className="text-sm font-bold text-white">Local Data</Text>
               <Text className="text-xs font-semibold text-accent">
-                {likedSongs.length} Liked • {recentPlays.length} Recent
+                {downloadedCount} Offline • {likedSongs.length} Liked • {recentPlays.length} Recent
               </Text>
             </View>
             <Text className="text-xs text-text-muted mb-3">
-              All stats, liked tracks, and audio settings are stored locally on your device.
+              All stats, liked tracks, and {downloadedCount > 0 ? `${formatBytes(totalDownloadBytes)} of ` : ''}offline songs are stored locally on your device.
             </Text>
 
             <View className="flex-row items-center justify-between gap-3">
@@ -660,6 +692,18 @@ export default function ProfileScreen() {
                 <Text className="text-xs font-bold text-accent">Reset Preferences</Text>
               </TouchableOpacity>
             </View>
+
+            {downloadedCount > 0 && (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleClearDownloads}
+                className="mt-2.5 py-2.5 rounded-xl border border-red-500/40 bg-red-500/10 items-center justify-center"
+              >
+                <Text className="text-xs font-semibold text-red-400">
+                  Clear Offline Downloads ({formatBytes(totalDownloadBytes)})
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Developer Shoutout Entry Card */}

@@ -3,6 +3,7 @@ import { Image, Text, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { theme } from '../../../theme';
 import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
+import DownloadButton from '../../../components/ui/DownloadButton';
 
 export type SongCardProps = BaseSongCardProps;
 
@@ -34,7 +35,7 @@ export const SongCard: React.FC<SongCardProps> = React.memo(({
           <Image source={{ uri: imageUrl }} className="w-[44] h-[44] mx-2 rounded-full" resizeMode="cover" />
         ) : null}
 
-        <View className='flex-col flex-1 pr-28'>
+        <View className='flex-col flex-1 pr-[152px]'>
             <Text
         className={`text-md font-bold mt-2 ${
           isCurrentSong ? 'text-accent' : 'text-white'
@@ -47,6 +48,12 @@ export const SongCard: React.FC<SongCardProps> = React.memo(({
         {artistName}
       </Text>
         </View>
+
+        <DownloadButton
+          song={song}
+          size="md"
+          className="absolute right-[106px] bg-white/10 border-glass-border"
+        />
 
         <TouchableOpacity
           activeOpacity={0.8}

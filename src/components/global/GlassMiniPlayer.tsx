@@ -14,15 +14,12 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   useActiveTrack,
-  useIsPlaying,
   useProgress,
 } from 'react-native-track-player';
 
 import { Song } from '../../types/song';
 import {
   decodeHtmlEntities,
-  pauseSong,
-  resumeSong,
   playSong,
   skipToNextSong,
   getSongArtistName,
@@ -32,17 +29,20 @@ import {
 import { RootStackParamList } from '../../navigation/types';
 import { theme } from '../../theme';
 import { useCurrentSongStore } from '../../store/useCurrentSongStore';
+import { useOptimisticPlayback } from '../../hooks/useOptimisticPlayback';
 
 export interface GlassMiniPlayerProps {
   fallbackSong?: Song;
   bottomOffsetClass?: string;
 }
 
-const MiniPlayerProgressBar: React.FC = React.memo(() => {
+const MiniPlayerProgressBar: React.FC<{ isSwitchingTrack?: boolean }> = React.memo(({
+  isSwitchingTrack = false,
+}) => {
   const isFocused = useIsFocused();
-  const { position, duration } = useProgress(500);
+  const { position, duration } = useProgress(200);
   const progressRatio =
-    isFocused && duration > 0
+    isFocused && !isSwitchingTrack && duration > 0
       ? Math.min(Math.max(position / duration, 0), 1)
       : 0;
   const progressPercent = `${(progressRatio * 100).toFixed(1)}%` as `${number}%`;
@@ -61,10 +61,12 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const activeTrack = useActiveTrack();
-  const { playing } = useIsPlaying();
   const currentSong = useCurrentSongStore((state) => state.currentSong);
-
   const activeOrFallbackSong = currentSong || fallbackSong;
+  const isSwitchingTrack = Boolean(
+    currentSong?.id && activeTrack?.id && currentSong.id !== activeTrack.id,
+  );
+  const { isPlaying, togglePlayback } = useOptimisticPlayback(activeOrFallbackSong);
 
   // If no track is playing and no fallback song is available, don't render
   if (!activeTrack && !activeOrFallbackSong) {
@@ -72,31 +74,18 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
   }
 
   const title =
-    decodeHtmlEntities(activeTrack?.title) ||
+    (currentSong ? getSongTitle(currentSong) : decodeHtmlEntities(activeTrack?.title)) ||
     getSongTitle(activeOrFallbackSong) ||
     'Nothing Playing';
   const artist =
-    decodeHtmlEntities(activeTrack?.artist) ||
+    (currentSong ? getSongArtistName(currentSong) : decodeHtmlEntities(activeTrack?.artist)) ||
     getSongArtistName(activeOrFallbackSong);
   const artwork =
-    (activeTrack?.artwork as string) ||
+    (currentSong ? getSongArtwork(currentSong) : (activeTrack?.artwork as string)) ||
     getSongArtwork(activeOrFallbackSong);
 
-  const handleTogglePlayback = async () => {
-    try {
-      if (playing) {
-        await pauseSong();
-      } else {
-        if (!activeTrack && activeOrFallbackSong) {
-          useCurrentSongStore.getState().setCurrentSong(activeOrFallbackSong);
-          await playSong(activeOrFallbackSong);
-        } else {
-          await resumeSong();
-        }
-      }
-    } catch (e) {
-      console.log('Error toggling mini player playback:', e);
-    }
+  const handleTogglePlayback = () => {
+    togglePlayback(Boolean(activeTrack));
   };
 
   const handleNext = async () => {
@@ -199,7 +188,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
               {title}
             </Text>
             <View className="flex-row items-center gap-1.5 mt-0.5">
-              {playing ? (
+              {isPlaying ? (
                 <View className="h-1.5 w-1.5 rounded-full bg-accent" />
               ) : null}
               <Text className="text-xs text-white/70" numberOfLines={1}>
@@ -217,10 +206,10 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
             className="w-10 h-10 rounded-full bg-accent items-center justify-center shadow-sm shadow-accent/50"
           >
             <Feather
-              name={playing ? 'pause' : 'play'}
+              name={isPlaying ? 'pause' : 'play'}
               size={18}
               color={theme.colors.text.dark}
-              className={!playing ? 'ml-0.5' : undefined}
+              className={!isPlaying ? 'ml-0.5' : undefined}
             />
           </TouchableOpacity>
 
@@ -235,7 +224,7 @@ export const GlassMiniPlayer: React.FC<GlassMiniPlayerProps> = React.memo(({
       </View>
 
       {/* Slim Ambient Progress Line on bottom edge */}
-      <MiniPlayerProgressBar />
+      <MiniPlayerProgressBar isSwitchingTrack={isSwitchingTrack} />
     </View>
   );
 });

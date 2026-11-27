@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,12 +27,19 @@ import {
 import { getPlaylistBySearch, getPlaylistDetails } from '../../service/music';
 import {
   useCurrentSongStore,
+  useDownloadStore,
   useListeningStore,
   useUserStore,
   UserPlaylist,
 } from '../../store';
 import { AppTabParamList } from '../../navigation/types';
 import { GlassMiniPlayer } from '../../components/global/GlassMiniPlayer';
+import DownloadButton from '../../components/ui/DownloadButton';
+import {
+  clearAllDownloads,
+  formatBytes,
+  removeDownloadedSong,
+} from '../../service/download';
 import PlaylistDetailModal, {
   ActivePlaylistDetail,
 } from './components/PlaylistDetailModal';
@@ -44,9 +51,10 @@ interface CuratedPlaylistPreview {
   image: string;
 }
 
-const FILTER_TABS = ['All', 'Playlists', 'Liked', 'Recent'] as const;
+const FILTER_TABS = ['All', 'Downloads', 'Playlists', 'Liked', 'Recent'] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
 const LIKED_PLAYLIST_ID = 'liked-songs';
+const DOWNLOADED_PLAYLIST_ID = 'downloaded-songs';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabParamList>>();
@@ -65,6 +73,29 @@ export default function LibraryScreen() {
     removeSongFromPlaylist,
     openPlaylistModal,
   } = useListeningStore();
+
+  const downloads = useDownloadStore((state) => state.downloads);
+  const downloadOrder = useDownloadStore((state) => state.downloadOrder);
+
+  const downloadedRecords = useMemo(() => {
+    const orderedIds = downloadOrder.filter((id) => Boolean(downloads[id]));
+    const extraIds = Object.keys(downloads).filter(
+      (id) => !downloadOrder.includes(id),
+    );
+    return [...orderedIds, ...extraIds]
+      .map((id) => downloads[id])
+      .filter(Boolean);
+  }, [downloadOrder, downloads]);
+
+  const downloadedSongs = useMemo(
+    () => downloadedRecords.map((r) => r.song),
+    [downloadedRecords],
+  );
+
+  const totalDownloadBytes = useMemo(
+    () => downloadedRecords.reduce((sum, r) => sum + (r.fileSize || 0), 0),
+    [downloadedRecords],
+  );
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
   const [curatedPlaylists, setCuratedPlaylists] = useState<CuratedPlaylistPreview[]>([]);
@@ -136,6 +167,36 @@ export default function LibraryScreen() {
     });
   };
 
+  const openDownloadedPlaylist = () => {
+    setDetailLoading(false);
+    setDetailPlaylist({
+      id: DOWNLOADED_PLAYLIST_ID,
+      title: 'Downloaded Songs',
+      subtitle: `${downloadedSongs.length} offline tracks`,
+      badgeLabel: 'Offline Library',
+      image: downloadedSongs[0] ? getSongArtwork(downloadedSongs[0]) : undefined,
+      isLocal: true,
+      isBuiltIn: true,
+      songs: downloadedSongs,
+    });
+  };
+
+  const handleClearAllDownloads = () => {
+    if (downloadedSongs.length === 0) return;
+    Alert.alert(
+      'Clear All Downloads',
+      `Delete all ${downloadedSongs.length} downloaded songs (${formatBytes(totalDownloadBytes)}) from your device?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: () => clearAllDownloads(),
+        },
+      ],
+    );
+  };
+
   const openCuratedPlaylist = async (pl: CuratedPlaylistPreview) => {
     setDetailPlaylist({
       id: pl.id,
@@ -173,7 +234,7 @@ export default function LibraryScreen() {
     openPlaylistModal(null);
   };
 
-  // Keep detail modal in sync if user renames or removes a song from Liked Songs or a local playlist
+  // Keep detail modal in sync if user renames or removes a song from Liked Songs, Downloads, or a local playlist
   const syncedDetailPlaylist = detailPlaylist?.isLocal
     ? detailPlaylist.id === LIKED_PLAYLIST_ID
       ? {
@@ -181,6 +242,13 @@ export default function LibraryScreen() {
           subtitle: `${likedSongs.length} tracks`,
           songs: likedSongs,
           image: likedSongs[0] ? getSongArtwork(likedSongs[0]) : undefined,
+        }
+      : detailPlaylist.id === DOWNLOADED_PLAYLIST_ID
+      ? {
+          ...detailPlaylist,
+          subtitle: `${downloadedSongs.length} offline tracks`,
+          songs: downloadedSongs,
+          image: downloadedSongs[0] ? getSongArtwork(downloadedSongs[0]) : undefined,
         }
       : (() => {
           const latest = localPlaylists.find((p) => p.id === detailPlaylist.id);
@@ -204,10 +272,34 @@ export default function LibraryScreen() {
       }
       return;
     }
+    if (playlistId === DOWNLOADED_PLAYLIST_ID) {
+      const target = downloadedSongs.find((s) => s.id === songId);
+      if (target) {
+        Alert.alert(
+          'Remove Download',
+          `Remove "${getSongTitle(target)}" from offline downloads?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Remove',
+              style: 'destructive',
+              onPress: () => removeDownloadedSong(songId),
+            },
+          ],
+        );
+      }
+      return;
+    }
     removeSongFromPlaylist(playlistId, songId);
   };
 
-  const renderSongRow = (song: Song, queue: Song[], index: number, showUnlike = false) => (
+  const renderSongRow = (
+    song: Song,
+    queue: Song[],
+    index: number,
+    showUnlike = false,
+    extraSubtitle?: string,
+  ) => (
     <TouchableOpacity
       key={`${song.id}-${index}`}
       activeOpacity={0.85}
@@ -224,9 +316,11 @@ export default function LibraryScreen() {
           {getSongTitle(song)}
         </Text>
         <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
-          {getSongArtistName(song)}
+          {extraSubtitle ? `${getSongArtistName(song)} • ${extraSubtitle}` : getSongArtistName(song)}
         </Text>
       </View>
+
+      <DownloadButton song={song} size="md" variant="ghost" className="mr-1" />
 
       <TouchableOpacity
         onPress={() => openAddToPlaylist(song)}
@@ -274,7 +368,7 @@ export default function LibraryScreen() {
                 Your Library
               </Text>
               <Text className="mt-0.5 text-xs text-text-muted">
-                {localPlaylists.length + 1} playlists • {likedSongs.length} liked • {recentPlays.length} recent
+                {downloadedSongs.length} offline • {localPlaylists.length + 1} playlists • {likedSongs.length} liked
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
@@ -326,6 +420,116 @@ export default function LibraryScreen() {
               );
             })}
           </ScrollView>
+
+          {/* Downloaded Songs Hero Card */}
+          {(activeFilter === 'All' || activeFilter === 'Downloads') && (
+            <View className="px-5 mb-4">
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={
+                  activeFilter === 'All'
+                    ? openDownloadedPlaylist
+                    : undefined
+                }
+                className="overflow-hidden rounded-3xl border border-glass-border p-4 bg-glass-tint relative"
+              >
+                <LinearGradient
+                  colors={['rgba(52, 211, 153, 0.20)', 'rgba(22, 38, 17, 0.45)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-3.5 flex-1 pr-2">
+                    <View className="h-14 w-14 rounded-2xl bg-accent/20 border border-accent/50 items-center justify-center">
+                      <Feather
+                        name="download"
+                        size={24}
+                        color={theme.colors.accent.DEFAULT}
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-lg font-bold text-white">
+                        Downloads
+                      </Text>
+                      <Text className="text-xs text-text-muted mt-0.5" numberOfLines={1}>
+                        {downloadedSongs.length === 0
+                          ? 'Tap download on any song to play offline'
+                          : `${downloadedSongs.length} offline ${downloadedSongs.length === 1 ? 'track' : 'tracks'} • ${formatBytes(totalDownloadBytes)}`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={downloadedSongs.length === 0}
+                    onPress={() =>
+                      playQueueAndNavigate(navigation, downloadedSongs, 0)
+                    }
+                    className={`h-10 w-10 rounded-full items-center justify-center ${
+                      downloadedSongs.length > 0 ? 'bg-accent' : 'bg-white/10'
+                    }`}
+                  >
+                    <Feather
+                      name="play"
+                      size={16}
+                      color={
+                        downloadedSongs.length > 0
+                          ? theme.colors.text.dark
+                          : '#FFFFFF'
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Downloaded Songs List */}
+          {activeFilter === 'Downloads' && (
+            <View className="mb-6">
+              {downloadedRecords.length > 0 && (
+                <View className="px-5 mb-2.5 flex-row items-center justify-between">
+                  <Text className="text-base font-bold text-white">
+                    Offline Tracks
+                  </Text>
+                  <TouchableOpacity onPress={handleClearAllDownloads}>
+                    <Text className="text-xs text-red-400 font-semibold">
+                      Clear All
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {downloadedRecords.length === 0 ? (
+                <View className="mx-5 p-5 rounded-2xl border border-glass-border bg-glass-tint items-center">
+                  <View className="h-12 w-12 rounded-full bg-accent/15 border border-accent/35 items-center justify-center mb-2.5">
+                    <Feather
+                      name="download"
+                      size={20}
+                      color={theme.colors.accent.DEFAULT}
+                    />
+                  </View>
+                  <Text className="text-sm font-semibold text-white mb-1">
+                    No Downloaded Songs Yet
+                  </Text>
+                  <Text className="text-xs text-text-muted text-center">
+                    Tap the download icon on any track or playlist to save songs for offline listening.
+                  </Text>
+                </View>
+              ) : (
+                downloadedRecords.map((record, idx) =>
+                  renderSongRow(
+                    record.song,
+                    downloadedSongs,
+                    idx,
+                    false,
+                    formatBytes(record.fileSize),
+                  ),
+                )
+              )}
+            </View>
+          )}
 
           {/* Liked Songs Hero Card */}
           {(activeFilter === 'All' || activeFilter === 'Liked') && (

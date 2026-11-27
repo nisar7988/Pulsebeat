@@ -1,14 +1,22 @@
 import TrackPlayer, { Event } from 'react-native-track-player';
 import { skipToNextSong, skipToPreviousSong } from './player';
 import { syncPlaybackWidget, syncWidgetProgress } from './widgetSync';
+import { useCurrentSongStore } from '../store/useCurrentSongStore';
 
 export const playbackService = async () => {
   TrackPlayer.addEventListener(Event.RemotePlay, async () => {
+    useCurrentSongStore.getState().setIsPlaying(true);
     await TrackPlayer.play();
     syncPlaybackWidget();
   });
   TrackPlayer.addEventListener(Event.RemotePause, async () => {
+    useCurrentSongStore.getState().setIsPlaying(false);
     await TrackPlayer.pause();
+    syncPlaybackWidget();
+  });
+  TrackPlayer.addEventListener(Event.RemoteStop, async () => {
+    useCurrentSongStore.getState().setIsPlaying(false);
+    await TrackPlayer.stop();
     syncPlaybackWidget();
   });
   TrackPlayer.addEventListener(Event.RemoteNext, async () => {

@@ -12,14 +12,40 @@ import { Song } from '../types/song';
 import { useCurrentSongStore } from '../store/useCurrentSongStore';
 import { useUserStore, AudioQuality } from '../store/useUserStore';
 import { useListeningStore } from '../store/useListeningStore';
+import { useDownloadStore } from '../store/useDownloadStore';
 import { getSongDetails, getSongSuggestions } from './music';
 import { syncPlaybackWidget } from './widgetSync';
+import { decodeHtmlEntities, pickAudioUrlByQuality } from './audioUtils';
+import { getLocalArtworkUri, getLocalAudioUri } from './download';
+
+export { decodeHtmlEntities };
 
 let isPlayerInitialized = false;
 let isInitializing = false;
 let playbackListenerRegistered = false;
 let inFlightSongId: string | null = null;
 let suggestionsInFlight: { songId: string; promise: Promise<void> } | null = null;
+let optimisticPlayingLock: { value: boolean; expiresAt: number } | null = null;
+
+function applyOptimisticPlaying(playing: boolean, lockMs = 650): void {
+  optimisticPlayingLock = {
+    value: playing,
+    expiresAt: Date.now() + lockMs,
+  };
+  useCurrentSongStore.getState().setIsPlaying(playing);
+}
+
+async function syncPlayingFromNative(): Promise<void> {
+  try {
+    const { state } = await TrackPlayer.getPlaybackState();
+    optimisticPlayingLock = null;
+    useCurrentSongStore
+      .getState()
+      .setIsPlaying(state === State.Playing || state === State.Buffering);
+  } catch {
+    // Ignore native query errors
+  }
+}
 
 const songCatalog = new Map<string, Song>();
 
@@ -39,7 +65,8 @@ function findSongById(id?: string | null): Song | undefined {
   const { recentPlays, likedSongs } = useListeningStore.getState();
   return (
     recentPlays.find((s) => s.id === id) ||
-    likedSongs.find((s) => s.id === id)
+    likedSongs.find((s) => s.id === id) ||
+    useDownloadStore.getState().downloads[id]?.song
   );
 }
 
@@ -49,6 +76,18 @@ function registerPlaybackStateSync() {
   TrackPlayer.addEventListener(Event.PlaybackState, (event) => {
     const playing =
       event.state === State.Playing || event.state === State.Buffering;
+
+    if (optimisticPlayingLock) {
+      if (Date.now() < optimisticPlayingLock.expiresAt) {
+        if (playing !== optimisticPlayingLock.value) {
+          return;
+        }
+        optimisticPlayingLock = null;
+      } else {
+        optimisticPlayingLock = null;
+      }
+    }
+
     useCurrentSongStore.getState().setIsPlaying(playing);
     syncPlaybackWidget();
   });
@@ -109,16 +148,6 @@ export const initializePlayer = async () => {
   }
 };
 
-export function decodeHtmlEntities(text?: string | null): string {
-  if (!text) return '';
-  return text
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;|&apos;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
-}
-
 export const getSongTitle = (song?: Song | null): string => {
   if (!song?.name) return 'Unknown Track';
   return decodeHtmlEntities(song.name);
@@ -145,30 +174,18 @@ export const getSongArtwork = (song?: Song | null): string => {
   );
 };
 
-function pickAudioUrlByQuality(
-  urls: Array<{ quality?: string; url?: string }>,
-  quality: AudioQuality,
-): string | undefined {
-  if (!urls.length) return undefined;
-  if (quality === 'high') {
-    return urls[urls.length - 1]?.url || urls[0]?.url;
-  }
-  if (quality === 'medium') {
-    const midIndex = Math.floor((urls.length - 1) / 2);
-    return urls[midIndex]?.url || urls[urls.length - 1]?.url || urls[0]?.url;
-  }
-  return urls[0]?.url || urls[urls.length - 1]?.url;
-}
-
 function toTrackItem(song: Song, quality: AudioQuality): AddTrack | null {
-  const url = pickAudioUrlByQuality(song.downloadUrl || [], quality);
+  const url =
+    getLocalAudioUri(song.id) ||
+    pickAudioUrlByQuality(song.downloadUrl || [], quality);
   if (!url) return null;
+  const artwork = getLocalArtworkUri(song.id) || getSongArtwork(song);
   return {
     id: song.id,
     url,
     title: song.name,
     artist: getSongArtistName(song),
-    artwork: getSongArtwork(song),
+    artwork,
     duration: song.duration || undefined,
   };
 }
@@ -252,6 +269,7 @@ export const playSong = async (song?: Song) => {
     const currentSong = song || useCurrentSongStore.getState().currentSong;
     if (!currentSong) return;
     registerSongsInCatalog([currentSong]);
+    applyOptimisticPlaying(true, 1200);
     await initializePlayer();
 
     // If the selected song is already the active track in TrackPlayer, resume playback if paused
@@ -271,7 +289,9 @@ export const playSong = async (song?: Song) => {
     const artistName = getSongArtistName(currentSong);
     const quality = useUserStore.getState().audioQuality;
     const downloadUrls = currentSong.downloadUrl || [];
-    let audioUrl = pickAudioUrlByQuality(downloadUrls, quality);
+    let audioUrl =
+      getLocalAudioUri(currentSong.id) ||
+      pickAudioUrlByQuality(downloadUrls, quality);
 
     // Fallback: fetch song details if downloadUrl is missing or empty
     if (!audioUrl && currentSong.id) {
@@ -286,7 +306,7 @@ export const playSong = async (song?: Song) => {
       }
     }
 
-    const artwork = getSongArtwork(currentSong);
+    const artwork = getLocalArtworkUri(currentSong.id) || getSongArtwork(currentSong);
 
     if (audioUrl) {
       await TrackPlayer.reset();
@@ -307,8 +327,8 @@ export const playSong = async (song?: Song) => {
       }
     } else {
       // Stop previous track so it does not keep playing in the background
+      applyOptimisticPlaying(false, 500);
       await TrackPlayer.stop();
-      useCurrentSongStore.getState().setIsPlaying(false);
       Alert.alert(
         'Track Unavailable',
         `Unable to stream "${getSongTitle(currentSong)}" right now. Please try another song.`,
@@ -317,6 +337,7 @@ export const playSong = async (song?: Song) => {
     }
   } catch (err) {
     console.log('Error in playSong:', err);
+    await syncPlayingFromNative();
   } finally {
     if (inFlightSongId === targetId) {
       inFlightSongId = null;
@@ -330,6 +351,9 @@ export const playSong = async (song?: Song) => {
  */
 export const navigateAndPlaySong = (navigation: any, song: Song) => {
   registerSongsInCatalog([song]);
+  useCurrentSongStore.getState().setCurrentSong(song);
+  applyOptimisticPlaying(true, 1200);
+
   const parent = navigation.getParent?.();
   if (parent) {
     parent.navigate('Player', { song });
@@ -339,7 +363,6 @@ export const navigateAndPlaySong = (navigation: any, song: Song) => {
 
   requestAnimationFrame(() => {
     setTimeout(() => {
-      useCurrentSongStore.getState().setCurrentSong(song);
       playSong(song).catch((err) => {
         console.log('Error playing song:', err);
       });
@@ -360,6 +383,9 @@ export const playQueueAndNavigate = (
   const safeIndex = Math.max(0, Math.min(startIndex, songs.length - 1));
   const targetSong = songs[safeIndex];
 
+  useCurrentSongStore.getState().setCurrentSong(targetSong);
+  applyOptimisticPlaying(true, 1200);
+
   const parent = navigation.getParent?.();
   if (parent) {
     parent.navigate('Player', { song: targetSong });
@@ -370,7 +396,6 @@ export const playQueueAndNavigate = (
   requestAnimationFrame(() => {
     setTimeout(async () => {
       try {
-        useCurrentSongStore.getState().setCurrentSong(targetSong);
         await initializePlayer();
         const quality = useUserStore.getState().audioQuality;
         const tracks = songs
@@ -392,35 +417,45 @@ export const playQueueAndNavigate = (
         useListeningStore.getState().recordPlay(targetSong);
       } catch (err) {
         console.log('Error playing queue:', err);
+        await syncPlayingFromNative();
       }
     }, 50);
   });
 };
 
 export const pauseSong = async () => {
+  applyOptimisticPlaying(false);
   try {
     await initializePlayer();
     await TrackPlayer.pause();
+    syncPlaybackWidget();
   } catch (e) {
     console.log('Pause error:', e);
+    await syncPlayingFromNative();
   }
 };
 
 export const resumeSong = async () => {
+  applyOptimisticPlaying(true);
   try {
     await initializePlayer();
     await TrackPlayer.play();
+    syncPlaybackWidget();
   } catch (e) {
     console.log('Resume error:', e);
+    await syncPlayingFromNative();
   }
 };
 
 export const stopSong = async () => {
+  applyOptimisticPlaying(false);
   try {
     await initializePlayer();
     await TrackPlayer.stop();
+    syncPlaybackWidget();
   } catch (e) {
     console.log('Stop error:', e);
+    await syncPlayingFromNative();
   }
 };
 
@@ -454,6 +489,11 @@ export const skipToNextSong = async () => {
       if (nextIdx === activeIdx) {
         nextIdx = (nextIdx + 1) % queue.length;
       }
+      const nextTrack = queue[nextIdx];
+      if (nextTrack) {
+        useCurrentSongStore.getState().setCurrentSong(trackToSong(nextTrack));
+      }
+      applyOptimisticPlaying(true, 900);
       await TrackPlayer.skip(nextIdx);
       await TrackPlayer.play();
       syncPlaybackWidget();
@@ -461,6 +501,11 @@ export const skipToNextSong = async () => {
     }
 
     if (activeIdx !== undefined && activeIdx < queue.length - 1) {
+      const nextTrack = queue[activeIdx + 1];
+      if (nextTrack) {
+        useCurrentSongStore.getState().setCurrentSong(trackToSong(nextTrack));
+      }
+      applyOptimisticPlaying(true, 900);
       await TrackPlayer.skipToNext();
       await TrackPlayer.play();
       syncPlaybackWidget();
@@ -487,6 +532,11 @@ export const skipToPreviousSong = async () => {
     }
 
     if (activeIdx !== undefined && activeIdx > 0 && queue.length > 1) {
+      const prevTrack = queue[activeIdx - 1];
+      if (prevTrack) {
+        useCurrentSongStore.getState().setCurrentSong(trackToSong(prevTrack));
+      }
+      applyOptimisticPlaying(true, 900);
       await TrackPlayer.skipToPrevious();
       await TrackPlayer.play();
       syncPlaybackWidget();
@@ -524,19 +574,20 @@ export const toggleShuffleMode = async (): Promise<boolean> => {
 };
 
 export const toggleRepeatMode = async (): Promise<boolean> => {
+  const prevEnabled = useCurrentSongStore.getState().isRepeat;
+  const nextEnabled = !prevEnabled;
+  useCurrentSongStore.getState().setIsRepeat(nextEnabled);
   try {
     await initializePlayer();
-    const currentMode = await TrackPlayer.getRepeatMode();
-    const nextEnabled = currentMode !== RepeatMode.Track;
     await TrackPlayer.setRepeatMode(
       nextEnabled ? RepeatMode.Track : RepeatMode.Off,
     );
-    useCurrentSongStore.getState().setIsRepeat(nextEnabled);
     syncPlaybackWidget();
     return nextEnabled;
   } catch (e) {
     console.log('Toggle repeat error:', e);
-    return useCurrentSongStore.getState().isRepeat;
+    useCurrentSongStore.getState().setIsRepeat(prevEnabled);
+    return prevEnabled;
   }
 };
 
@@ -594,6 +645,12 @@ export const getQueueSongs = async (): Promise<{
 export const skipToQueueIndex = async (index: number): Promise<void> => {
   try {
     await initializePlayer();
+    const queue = await TrackPlayer.getQueue().catch(() => []);
+    const targetTrack = queue[index];
+    if (targetTrack) {
+      useCurrentSongStore.getState().setCurrentSong(trackToSong(targetTrack));
+    }
+    applyOptimisticPlaying(true, 900);
     await TrackPlayer.skip(index);
     await TrackPlayer.play();
     syncPlaybackWidget();

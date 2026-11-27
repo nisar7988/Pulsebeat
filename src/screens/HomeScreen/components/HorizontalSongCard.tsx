@@ -3,6 +3,7 @@ import { Image, Text, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { theme } from '../../../theme';
 import { BaseSongCardProps, useSongCard } from '../../../hooks/useSongCard';
+import { useDownloadStore } from '../../../store/useDownloadStore';
 
 export type HorizontalSongCardProps = BaseSongCardProps;
 
@@ -19,6 +20,9 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(
     handlePlay,
     handleAddToPlaylist,
   } = useSongCard({ song, onPlay });
+  const isDownloaded = useDownloadStore((state) =>
+    Boolean(state.downloads[song.id]),
+  );
 
   return (
     <TouchableOpacity
@@ -38,6 +42,12 @@ export const HorizontalSongCard: React.FC<HorizontalSongCardProps> = React.memo(
         {isPlayingCurrent && (
           <View className="absolute inset-0 items-center justify-center bg-black/40">
             <Feather name="volume-2" size={24} color={theme.colors.accent.DEFAULT} />
+          </View>
+        )}
+
+        {isDownloaded && (
+          <View className="absolute top-2 left-2 h-6 w-6 rounded-full bg-black/65 border border-accent/60 items-center justify-center">
+            <Feather name="check" size={12} color={theme.colors.accent.DEFAULT} />
           </View>
         )}
 

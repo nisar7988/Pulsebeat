@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
@@ -18,10 +19,14 @@ interface PlaylistModalProps {
   songToAdd?: Song | null;
   playlists: UserPlaylist[];
   likedSongs?: Song[];
+  isSongDownloaded?: boolean;
+  isSongDownloading?: boolean;
+  downloadProgress?: number;
   onClose: () => void;
   onCreatePlaylist: (name: string, song?: Song | null) => void;
   onSelectPlaylist?: (playlistId: string, song: Song) => void;
   onToggleLikeSong?: (song: Song) => void;
+  onToggleDownloadSong?: (song: Song) => void;
 }
 
 export default function PlaylistModal({
@@ -29,10 +34,14 @@ export default function PlaylistModal({
   songToAdd,
   playlists,
   likedSongs = [],
+  isSongDownloaded = false,
+  isSongDownloading = false,
+  downloadProgress = 0,
   onClose,
   onCreatePlaylist,
   onSelectPlaylist,
   onToggleLikeSong,
+  onToggleDownloadSong,
 }: PlaylistModalProps) {
   const [name, setName] = useState('');
 
@@ -70,12 +79,58 @@ export default function PlaylistModal({
             </TouchableOpacity>
           </View>
 
-          {songToAdd && (playlists.length > 0 || Boolean(onToggleLikeSong)) && (
+          {songToAdd &&
+            (playlists.length > 0 ||
+              Boolean(onToggleLikeSong) ||
+              Boolean(onToggleDownloadSong)) && (
             <View className="mb-4">
               <Text className="text-xs font-semibold text-text-muted mb-2">
-                Your Playlists
+                Song Actions & Playlists
               </Text>
-              <ScrollView style={{ maxHeight: 190 }}>
+              <ScrollView style={{ maxHeight: 220 }}>
+                {onToggleDownloadSong && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      onToggleDownloadSong(songToAdd);
+                    }}
+                    className="flex-row items-center justify-between py-2.5 px-3 mb-2 rounded-xl border border-accent/35 bg-accent/10"
+                  >
+                    <View className="flex-row items-center gap-2.5 flex-1">
+                      {isSongDownloading ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.colors.accent.DEFAULT}
+                        />
+                      ) : (
+                        <Feather
+                          name={isSongDownloaded ? 'check-circle' : 'download'}
+                          size={15}
+                          color={theme.colors.accent.DEFAULT}
+                        />
+                      )}
+                      <Text
+                        className="text-sm font-bold text-white flex-1"
+                        numberOfLines={1}
+                      >
+                        {isSongDownloading
+                          ? 'Downloading...'
+                          : isSongDownloaded
+                          ? 'Downloaded for Offline'
+                          : 'Download Song'}
+                      </Text>
+                    </View>
+                    <Text className="text-xs font-semibold text-accent">
+                      {isSongDownloading
+                        ? downloadProgress > 0
+                          ? `${Math.round(downloadProgress * 100)}% • Cancel`
+                          : 'Cancel'
+                        : isSongDownloaded
+                        ? 'Remove'
+                        : 'Save'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 {onToggleLikeSong && (() => {
                   const isLiked = likedSongs.some((s) => s.id === songToAdd.id);
                   return (

@@ -20,6 +20,9 @@ import {
   getSongArtwork,
   getSongTitle,
 } from '../../../service/player';
+import { downloadSongsBatch } from '../../../service/download';
+import { useDownloadStore } from '../../../store/useDownloadStore';
+import DownloadButton from '../../../components/ui/DownloadButton';
 
 export interface ActivePlaylistDetail {
   id: string;
@@ -55,6 +58,8 @@ export default function PlaylistDetailModal({
 }: PlaylistDetailModalProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
+  const [batchDownloading, setBatchDownloading] = useState(false);
+  const downloads = useDownloadStore((state) => state.downloads);
 
   useEffect(() => {
     setEditingTitle(false);
@@ -62,6 +67,26 @@ export default function PlaylistDetailModal({
   }, [playlist?.id, playlist?.title]);
 
   if (!playlist) return null;
+
+  const allDownloaded =
+    playlist.songs.length > 0 &&
+    playlist.songs.every((s) => Boolean(downloads[s.id]));
+
+  const handleDownloadAll = async () => {
+    if (batchDownloading || !playlist.songs.length || allDownloaded) return;
+    setBatchDownloading(true);
+    try {
+      const result = await downloadSongsBatch(playlist.songs);
+      if (result.failed > 0 && result.downloaded === 0) {
+        Alert.alert(
+          'Download Failed',
+          'Could not download tracks right now. Check your connection and try again.',
+        );
+      }
+    } finally {
+      setBatchDownloading(false);
+    }
+  };
 
   const coverUrl =
     playlist.image ||
@@ -210,19 +235,58 @@ export default function PlaylistDetailModal({
             </Text>
 
             {playlist.songs.length > 0 && !loading && (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => {
-                  onPlayAll(playlist.songs, 0);
-                  onClose();
-                }}
-                className="mt-4 flex-row items-center gap-2 bg-accent px-6 py-3 rounded-full"
-              >
-                <Feather name="play" size={16} color={theme.colors.text.dark} />
-                <Text className="text-sm font-extrabold text-text-dark">
-                  Play All
-                </Text>
-              </TouchableOpacity>
+              <View className="mt-4 flex-row items-center gap-3">
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    onPlayAll(playlist.songs, 0);
+                    onClose();
+                  }}
+                  className="flex-row items-center gap-2 bg-accent px-6 py-3 rounded-full"
+                >
+                  <Feather name="play" size={16} color={theme.colors.text.dark} />
+                  <Text className="text-sm font-extrabold text-text-dark">
+                    Play All
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={batchDownloading || allDownloaded}
+                  onPress={handleDownloadAll}
+                  className={`flex-row items-center gap-2 px-5 py-3 rounded-full border ${
+                    allDownloaded
+                      ? 'border-accent/55 bg-accent/20'
+                      : 'border-glass-border bg-glass-tint'
+                  }`}
+                >
+                  {batchDownloading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.accent.DEFAULT}
+                    />
+                  ) : (
+                    <Feather
+                      name={allDownloaded ? 'check-circle' : 'download'}
+                      size={15}
+                      color={
+                        allDownloaded ? theme.colors.accent.DEFAULT : '#FFFFFF'
+                      }
+                    />
+                  )}
+                  <Text
+                    className={`text-sm font-bold ${
+                      allDownloaded ? 'text-accent' : 'text-white'
+                    }`}
+                  >
+                    {batchDownloading
+                      ? 'Saving...'
+                      : allDownloaded
+                      ? 'Downloaded'
+                      : 'Download'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -270,22 +334,25 @@ export default function PlaylistDetailModal({
                   </Text>
                 </View>
 
-                {playlist.isLocal && onRemoveSong ? (
-                  <TouchableOpacity
-                    onPress={() => onRemoveSong(playlist.id, song.id)}
-                    className="h-9 w-9 items-center justify-center"
-                  >
-                    <Feather name="minus-circle" size={17} color="rgba(255,255,255,0.55)" />
-                  </TouchableOpacity>
-                ) : (
-                  <View className="h-9 w-9 rounded-full bg-accent/15 items-center justify-center">
-                    <Feather
-                      name="play"
-                      size={14}
-                      color={theme.colors.accent.DEFAULT}
-                    />
-                  </View>
-                )}
+                <View className="flex-row items-center gap-1.5 ml-2">
+                  <DownloadButton song={song} size="sm" />
+                  {playlist.isLocal && onRemoveSong ? (
+                    <TouchableOpacity
+                      onPress={() => onRemoveSong(playlist.id, song.id)}
+                      className="h-9 w-9 items-center justify-center"
+                    >
+                      <Feather name="minus-circle" size={17} color="rgba(255,255,255,0.55)" />
+                    </TouchableOpacity>
+                  ) : (
+                    <View className="h-9 w-9 rounded-full bg-accent/15 items-center justify-center">
+                      <Feather
+                        name="play"
+                        size={14}
+                        color={theme.colors.accent.DEFAULT}
+                      />
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
             ))
           )}
